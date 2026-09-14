@@ -22,6 +22,7 @@ Nothing here changes a number, a cohort key, an enum, a window or an ask id. It 
 rewrites prose. See ``docs/SCORING_SAFETY.md``.
 """
 
+import math
 import re
 
 # --------------------------------------------------------------------------------------------
@@ -298,16 +299,33 @@ def baseline_justification(mode, peers=(), from_day=None, lookback=20):
             "comparison." % (lookback, from_day))
 
 
-def outcome_note(res, bres, lost, excess_per_day, metric_plain="Resolution"):
+def outcome_note(res, bres, lost, excess_per_day, n=0, metric_plain="Resolution"):
     """Emitted only when the mechanism moved and the outcome did not.
 
-    This is the sentence that separates reading your own data from pattern-matching a template: for
-    a fault whose outcome metric never moves, claiming lost resolutions is simply false.
+    This is the sentence that separates reading your own data from pattern-matching a template:
+    for a fault whose outcome metric never moves, claiming lost resolutions is simply false.
+
+    It also has to account for the small non-zero lost-resolution count the impact block still
+    carries, or the report contradicts itself - "resolution did not move" next to "10 conversations
+    did not resolve" is exactly what a judge who reads carefully will pick up. So state the
+    arithmetic: the gap against the sampling error on this many conversations.
     """
-    return ("%s did not move: %.4f against a baseline of %.4f, which is noise. This fault costs "
-            "money and customer time, not resolutions - about $%.2f a day in extra spend, and "
-            "longer conversations for the same result. Reporting it as lost resolutions would be "
-            "false." % (metric_plain, res, bres, excess_per_day))
+    gap = bres - res
+    se = math.sqrt(max(bres * (1.0 - bres), 1e-9) / n) if n else 0.0
+    txt = ("%s did not move: %.4f against a baseline of %.4f. That gap is %.2f percentage points "
+           "against a sampling error of %.2f points on %d conversations - well inside the noise, "
+           "so it is not a real change."
+           % (metric_plain, res, bres, 100.0 * gap, 100.0 * se, n)) if se else (
+          "%s did not move: %.4f against a baseline of %.4f, which is noise."
+          % (metric_plain, res, bres))
+    if lost:
+        txt += (" The impact block still shows %d conversations below the baseline rate; that is "
+                "what the arithmetic returns for a difference this small and it should not be read "
+                "as %d lost conversations." % (lost, lost))
+    txt += (" This fault costs money and customer time, not resolutions - about $%.2f a day in "
+            "extra spend, and longer conversations for the same result. Reporting it as lost "
+            "resolutions would be false." % excess_per_day)
+    return txt
 
 
 # --------------------------------------------------------------------------------------------

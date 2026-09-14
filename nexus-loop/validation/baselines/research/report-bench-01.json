@@ -391,7 +391,7 @@
     "days_running": 16,
     "derivation": "3821 sessions matched the cohort over 16 days (31.3% of this tenant's traffic in the window). Baseline: this cohort's own days before onset. Resolution 0.7901 against 0.7864, so 0 conversations that would have resolved did not; 401 ended in a handoff the agent was not built to make and 237 were abandoned. Cost per session $0.04413 against $0.04360 (eligible traffic only), an excess spend of $2.04 over the window.",
     "impact_type": "spend_and_time",
-    "outcome_note": "Resolution did not move: 0.7901 against a baseline of 0.7864, which is noise. This fault costs money and customer time, not resolutions - about $0.13 a day in extra spend, and longer conversations for the same result. Reporting it as lost resolutions would be false."
+    "outcome_note": "Resolution did not move: 0.7901 against a baseline of 0.7864. That gap is -0.37 percentage points against a sampling error of 0.66 points on 3821 conversations - well inside the noise, so it is not a real change. This fault costs money and customer time, not resolutions - about $0.13 a day in extra spend, and longer conversations for the same result. Reporting it as lost resolutions would be false."
    },
    "if_nothing_changes": "Outcomes are holding, but this cohort is spending about $0.13 a day more than its baseline for the same results, and customers are taking longer to get them.",
    "baseline": {
@@ -632,7 +632,7 @@
     "days_running": 10,
     "derivation": "1224 sessions matched the cohort over 10 days (23.3% of this tenant's traffic in the window). Baseline: this cohort's own days before onset. Resolution 0.8031 against 0.8018, so 0 conversations that would have resolved did not; 106 ended in a handoff the agent was not built to make and 87 were abandoned. Cost per session $0.07994 against $0.04178 (eligible traffic only), an excess spend of $46.70 over the window.",
     "impact_type": "spend_and_time",
-    "outcome_note": "Resolution did not move: 0.8031 against a baseline of 0.8018, which is noise. This fault costs money and customer time, not resolutions - about $4.67 a day in extra spend, and longer conversations for the same result. Reporting it as lost resolutions would be false."
+    "outcome_note": "Resolution did not move: 0.8031 against a baseline of 0.8018. That gap is -0.13 percentage points against a sampling error of 1.14 points on 1224 conversations - well inside the noise, so it is not a real change. This fault costs money and customer time, not resolutions - about $4.67 a day in extra spend, and longer conversations for the same result. Reporting it as lost resolutions would be false."
    },
    "if_nothing_changes": "Outcomes are holding, but this cohort is spending about $4.67 a day more than its baseline for the same results, and customers are taking longer to get them.",
    "baseline": {
@@ -1093,5 +1093,5 @@
   "cycles": 0,
   "prescription_accuracy": {}
  },
- "report_build": "sha256:6bacf8f035bb99cd"
+ "report_build": "sha256:f08a48a2b46e0858"
 }

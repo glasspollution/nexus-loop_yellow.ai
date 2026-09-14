@@ -103,7 +103,7 @@ def impact(C, inc):
     # archetype, reporting lost resolutions would be false, and a judge who read the data catches it.
     if lost < max(1, 0.01 * n):
         imp["impact_type"] = "spend_and_time"
-        imp["outcome_note"] = L.outcome_note(res, bres, lost, excess / days)
+        imp["outcome_note"] = L.outcome_note(res, bres, lost, excess / days, n)
     else:
         imp["impact_type"] = "lost_outcomes"
     return {"impact": imp, "if_nothing_changes": inaction, "baseline_type":

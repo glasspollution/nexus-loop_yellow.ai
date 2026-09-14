@@ -280,7 +280,7 @@
     "days_running": 11,
     "derivation": "1303 sessions matched the cohort over 11 days (23.9% of this tenant's traffic in the window). Baseline: this cohort's own days before onset. Resolution 0.8250 against 0.8282, so 4 conversations that would have resolved did not; 112 ended in a handoff the agent was not built to make and 80 were abandoned. Cost per session $0.08103 against $0.04361 (eligible traffic only), an excess spend of $48.76 over the window.",
     "impact_type": "spend_and_time",
-    "outcome_note": "Resolution did not move: 0.8250 against a baseline of 0.8282, which is noise. This fault costs money and customer time, not resolutions - about $4.43 a day in extra spend, and longer conversations for the same result. Reporting it as lost resolutions would be false."
+    "outcome_note": "Resolution did not move: 0.8250 against a baseline of 0.8282. That gap is 0.31 percentage points against a sampling error of 1.05 points on 1303 conversations - well inside the noise, so it is not a real change. The impact block still shows 4 conversations below the baseline rate; that is what the arithmetic returns for a difference this small and it should not be read as 4 lost conversations. This fault costs money and customer time, not resolutions - about $4.43 a day in extra spend, and longer conversations for the same result. Reporting it as lost resolutions would be false."
    },
    "if_nothing_changes": "Outcomes are holding, but this cohort is spending about $4.43 a day more than its baseline for the same results, and customers are taking longer to get them.",
    "baseline": {
@@ -1115,5 +1115,5 @@
   "cycles": 0,
   "prescription_accuracy": {}
  },
- "report_build": "sha256:f0feabad7d9063b5"
+ "report_build": "sha256:febe8ac6bb009d51"
 }
