@@ -40,57 +40,61 @@ import re
 # "session" means every session can produce it (coverage 1.0); "step" means it is computed from
 # agent_steps and therefore carries its tenant's eligible-session share, never a blended figure.
 
+# (plain, fidelity, coverage basis, definition, higher_is_better, unit)
 _SESSION = {
     "s.resolved": ("Resolution rate", "measured", "session",
-                   "Share of conversations that ended resolved.", True),
+                   "Share of conversations that ended resolved.", True, "rate"),
     "s.milestones_complete": ("Journey completion rate", "measured", "session",
                               "Share of conversations that reached every milestone their intent "
-                              "defines in the catalog.", True),
+                              "defines in the catalog.", True, "rate"),
     "s.milestone_ratio": ("Journey progress", "derived", "session",
                           "Average share of an intent's milestones reached before the conversation "
-                          "ended.", True),
+                          "ended.", True, "rate"),
     "s.handoff_unplanned": ("Unplanned handoffs", "measured", "session",
                             "Share of conversations handed to a human where handoff_by_design is "
-                            "false - a person the journey never intended to involve.", False),
+                            "false - a person the journey never intended to involve.", False, "rate"),
     "s.abandoned": ("Abandonment rate", "measured", "session",
                     "Share of conversations the customer left without resolving. How many gave up "
-                    "is measured; why they gave up is not - see the refused questions.", False),
+                    "is measured; why they gave up is not - see the refused questions.",
+                    False, "rate"),
     "s.turns": ("Exchanges per conversation", "measured", "session",
-                "Number of back-and-forth turns before the conversation ended.", False),
+                "Number of back-and-forth turns before the conversation ended.", False, "count"),
     "s.duration_s": ("Conversation length", "measured", "session",
-                     "Wall-clock seconds from first to last turn.", False),
+                     "Wall-clock seconds from first to last turn.", False, "count"),
     "s.cost_usd": ("Cost per conversation", "measured", "step",
                    "Model spend per conversation, summed over its llm_call steps. Only agents that "
                    "emit llm_call steps record cost at all, so this carries its tenant's coverage "
-                   "and is never blended across tenants.", False),
+                   "and is never blended across tenants.", False, "usd"),
     "s.tool_error_any": ("Conversations hitting a tool error", "derived", "step",
                          "Share of conversations with at least one tool call that did not return "
                          "ok. Declared failures only - a tool returning HTTP 200 with an empty "
-                         "body is counted as a success here, by definition.", False),
+                         "body is counted as a success here, by definition.", False, "rate"),
     "s.guardrail_any": ("Conversations hitting a guardrail", "measured", "step",
-                        "Share of conversations where at least one guardrail step fired.", False),
+                        "Share of conversations where at least one guardrail step fired.",
+                        False, "rate"),
 }
 
+# (plain, fidelity, definition template, higher_is_better, unit)
 _SUFFIX = {
     "fail": ("failure rate", "measured",
              "Share of {what} steps whose outcome was not ok. This is the DECLARED failure rate: "
-             "it believes what the step reported.", False),
-    "timeout": ("timeout rate", "measured", "Share of {what} steps that timed out.", False),
-    "blocked": ("blocked rate", "measured", "Share of {what} steps that were blocked.", False),
+             "it believes what the step reported.", False, "rate"),
+    "timeout": ("timeout rate", "measured", "Share of {what} steps that timed out.", False, "rate"),
+    "blocked": ("blocked rate", "measured", "Share of {what} steps that were blocked.", False, "rate"),
     "retry": ("retry rate", "measured",
               "Share of {what} steps with retry_count above zero. These are quality retries against "
-              "the same target, not failover to an alternate - see the refused questions.", False),
+              "the same target, not failover to an alternate - see the refused questions.", False, "rate"),
     "empty": ("empty-response rate", "derived",
               "Share of {what} steps that returned ok with zero fields in the payload. Derived, not "
               "declared: the step reports success, so every error-rate metric reads flat while this "
-              "one moves.", False),
+              "one moves.", False, "rate"),
     "miss": ("miss rate", "measured",
-             "Share of {what} steps that came back with no confident hit.", False),
+             "Share of {what} steps that came back with no confident hit.", False, "rate"),
     "top_score": ("best match score", "measured",
-                  "Confidence of the best {what} match, 0 to 1.", True),
+                  "Confidence of the best {what} match, 0 to 1.", True, "score"),
     "duration_ms": ("response time", "measured",
-                    "Milliseconds a {what} step took to return.", False),
-    "tokens": ("tokens used", "measured", "Tokens consumed by {what} steps.", False),
+                    "Milliseconds a {what} step took to return.", False, "ms"),
+    "tokens": ("tokens used", "measured", "Tokens consumed by {what} steps.", False, "count"),
 }
 
 _STEP_NOUN = {
@@ -131,9 +135,9 @@ def series(name):
     raw = str(name or "")
 
     if raw in _SESSION:
-        plain, fid, basis, defn, up = _SESSION[raw]
+        plain, fid, basis, defn, up, unit = _SESSION[raw]
         return {"name": raw, "plain": plain, "definition": defn, "fidelity": fid,
-                "basis": basis, "higher_is_better": up}
+                "basis": basis, "higher_is_better": up, "unit": unit}
 
     # judged quality, versioned: s.quality_score@v1
     if raw.startswith("s.quality_score"):
@@ -143,7 +147,8 @@ def series(name):
                                "version %s. Judged, not measured: it is an opinion about meaning, "
                                "and it is comparable only with other scores from the same rubric "
                                "version." % (ver or "unknown")),
-                "fidelity": "judged", "basis": "session", "higher_is_better": True}
+                "fidelity": "judged", "basis": "session", "higher_is_better": True,
+                "unit": "score"}
 
     # composition of traffic: share:intent
     if raw.startswith("share:"):
@@ -152,7 +157,8 @@ def series(name):
                 "definition": ("What proportion of this tenant's conversations each %s accounts "
                                "for. A change here moves every aggregate without anything getting "
                                "better or worse." % _DIM_NOUN.get(dim, dim)),
-                "fidelity": "derived", "basis": "session", "higher_is_better": None}
+                "fidelity": "derived", "basis": "session", "higher_is_better": None,
+                "unit": "rate"}
 
     # instrumentation coverage: coverage:kb_lookup
     if raw.startswith("coverage:"):
@@ -162,31 +168,34 @@ def series(name):
                 "definition": ("Share of conversations whose agent emits %s steps at all. A drop "
                                "here is a logging change, not a service change: metrics derived "
                                "from those steps lose coverage and must say so." % noun),
-                "fidelity": "derived", "basis": "session", "higher_is_better": True}
+                "fidelity": "derived", "basis": "session", "higher_is_better": True,
+                "unit": "rate"}
 
     # the launch pseudo-series, used when a cohort has no history to regress from
     if raw == "launch":
         return {"name": raw, "plain": "New to this deployment", "definition":
                 ("This cohort did not exist before the window, so it has no past to be compared "
                  "with. It is measured against peer cohorts over the same days instead."),
-                "fidelity": "derived", "basis": "session", "higher_is_better": None}
+                "fidelity": "derived", "basis": "session", "higher_is_better": None,
+                "unit": "count"}
 
     # step level: <step_type>.<suffix>
     if "." in raw:
         st, _, suf = raw.partition(".")
         noun = _STEP_NOUN.get(st, _pretty(st).lower() or "step")
         if suf in _SUFFIX:
-            plain, fid, defn, up = _SUFFIX[suf]
+            plain, fid, defn, up, unit = _SUFFIX[suf]
             return {"name": raw, "plain": "%s %s" % (noun.capitalize(), plain),
                     "definition": defn.format(what=noun), "fidelity": fid, "basis": "step",
-                    "higher_is_better": up}
+                    "higher_is_better": up, "unit": unit}
         return {"name": raw, "plain": "%s %s" % (noun.capitalize(), _pretty(suf).lower()),
                 "definition": ("Measured on %s steps in the agent's execution log." % noun),
-                "fidelity": "measured", "basis": "step", "higher_is_better": None}
+                "fidelity": "measured", "basis": "step", "higher_is_better": None,
+                "unit": "count"}
 
     return {"name": raw, "plain": _pretty(raw) or "Unnamed measure",
             "definition": "Computed from the deployment's own logs.",
-            "fidelity": "derived", "basis": "session", "higher_is_better": None}
+            "fidelity": "derived", "basis": "session", "higher_is_better": None, "unit": "count"}
 
 
 # --------------------------------------------------------------------------------------------

@@ -2,6 +2,46 @@
  "team": "nexus-generic-scan",
  "corpus": "A",
  "system_notes": "Generic scan: one changepoint test over every metric x cohort series, overdispersion-adjusted; breadth, composition and explain-away tests; diagnosis by runtime layer. Not implemented: standard mining, the A09 reason judge. Human decisions are written by the approval screen, never by this pipeline. Ask-to-metric mapping is hand-authored - it interprets operator language, which is the one place this system uses judgement rather than deriving from data. Refused breakdowns: session.custom_dims.customer_ref: 80252 distinct values exceeds its cardinality budget of 200 - refused, not truncated.",
+ "coverage_measured": {
+  "acme-bank": {
+   "guardrail": 1.0,
+   "handoff": 1.0,
+   "kb_lookup": 1.0,
+   "llm_call": 1.0,
+   "tool_call": 0.7205,
+   "s.abandoned": 1.0,
+   "s.cost_usd": 0.7205,
+   "s.duration_s": 1.0,
+   "s.guardrail_any": 0.7205,
+   "s.handoff_unplanned": 1.0,
+   "s.milestone_ratio": 1.0,
+   "s.milestones_complete": 1.0,
+   "s.quality_score@v1": 0.4971,
+   "s.quality_score@v2": 0.5029,
+   "s.resolved": 1.0,
+   "s.tool_error_any": 0.7205,
+   "s.turns": 1.0
+  },
+  "northwind-retail": {
+   "guardrail": 1.0,
+   "handoff": 1.0,
+   "kb_lookup": 1.0,
+   "llm_call": 1.0,
+   "tool_call": 0.9308,
+   "s.abandoned": 1.0,
+   "s.cost_usd": 0.9308,
+   "s.duration_s": 1.0,
+   "s.guardrail_any": 0.9308,
+   "s.handoff_unplanned": 1.0,
+   "s.milestone_ratio": 1.0,
+   "s.milestones_complete": 1.0,
+   "s.quality_score@v1": 0.5673,
+   "s.quality_score@v2": 0.4327,
+   "s.resolved": 1.0,
+   "s.tool_error_any": 0.9308,
+   "s.turns": 1.0
+  }
+ },
  "metrics": [
   {
    "id": "m_containment",
@@ -222,7 +262,8 @@
     "definition": "Share of knowledge-base lookup steps that came back with no confident hit.",
     "fidelity": "measured",
     "basis": "step",
-    "higher_is_better": false
+    "higher_is_better": false,
+    "unit": "rate"
    },
    "observed": 1.0,
    "expected": 0.10578,
@@ -283,7 +324,8 @@
     "definition": "Share of tool call steps that returned ok with zero fields in the payload. Derived, not declared: the step reports success, so every error-rate metric reads flat while this one moves.",
     "fidelity": "derived",
     "basis": "step",
-    "higher_is_better": false
+    "higher_is_better": false,
+    "unit": "rate"
    },
    "observed": 0.03972,
    "expected": 0.0,
@@ -342,7 +384,8 @@
     "definition": "Model spend per conversation, summed over its llm_call steps. Only agents that emit llm_call steps record cost at all, so this carries its tenant's coverage and is never blended across tenants.",
     "fidelity": "measured",
     "basis": "step",
-    "higher_is_better": false
+    "higher_is_better": false,
+    "unit": "usd"
    },
    "observed": 0.05587,
    "expected": 0.0423,
@@ -402,7 +445,8 @@
     "definition": "Milliseconds a knowledge-base lookup step took to return.",
     "fidelity": "measured",
     "basis": "step",
-    "higher_is_better": false
+    "higher_is_better": false,
+    "unit": "ms"
    },
    "severity": "low",
    "not_a_regression_because": "Traffic ran 3.6x its typical daily volume on days 12-15, and kb_lookup.duration_ms, llm_call.duration_ms, s.duration_s, s.tool_error_any, tool_call.duration_ms, tool_call.fail moved with it across every cohort at once - there is no locus. Resolution went 0.8009 -> 0.7769, and no outcome metric fired. Every co-moving deviation ended within 3 days of volume returning to normal, so nothing outlives its driver. This is a capacity / reliability event for the platform view, not a quality regression.",
@@ -433,7 +477,8 @@
     "definition": "What proportion of this tenant's conversations each question type accounts for. A change here moves every aggregate without anything getting better or worse.",
     "fidelity": "derived",
     "basis": "session",
-    "higher_is_better": null
+    "higher_is_better": null,
+    "unit": "rate"
    },
    "severity": "low",
    "not_a_regression_because": "The share of traffic from intent=branch_locator moved from a typical 13.3% to 43.6% for days 22-31. That changes aggregates without anything getting better or worse: tenant resolution moved +2.26% raw but -1.99% once re-weighted to the baseline intent mix. Stratify by intent before reading any tenant-level trend over this window.",
@@ -463,7 +508,8 @@
     "definition": "A model's 1-5 quality score for the conversation, under rubric version v1. Judged, not measured: it is an opinion about meaning, and it is comparable only with other scores from the same rubric version.",
     "fidelity": "judged",
     "basis": "session",
-    "higher_is_better": true
+    "higher_is_better": true,
+    "unit": "score"
    },
    "scope_plain": "Every tenant, not just acme-bank",
    "severity": "low",
@@ -588,7 +634,8 @@
     "definition": "Share of knowledge-base lookup steps that came back with no confident hit.",
     "fidelity": "measured",
     "basis": "step",
-    "higher_is_better": false
+    "higher_is_better": false,
+    "unit": "rate"
    },
    "decision": {
     "asking_approval_for": "Publish knowledge-base content covering Premium Card enquiries, so the agent has something to answer from. Or reject and route these questions to a human queue instead.",
@@ -614,7 +661,8 @@
     "definition": "Share of tool call steps that returned ok with zero fields in the payload. Derived, not declared: the step reports success, so every error-rate metric reads flat while this one moves.",
     "fidelity": "derived",
     "basis": "step",
-    "higher_is_better": false
+    "higher_is_better": false,
+    "unit": "rate"
    },
    "decision": {
     "asking_approval_for": "Make the get_order_status tool check the payload it gets back and treat an empty response as a failure instead of a success. Or reject and take it up with the team that owns the upstream service.",
@@ -640,7 +688,8 @@
     "definition": "Model spend per conversation, summed over its llm_call steps. Only agents that emit llm_call steps record cost at all, so this carries its tenant's coverage and is never blended across tenants.",
     "fidelity": "measured",
     "basis": "step",
-    "higher_is_better": false
+    "higher_is_better": false,
+    "unit": "usd"
    },
    "decision": {
     "asking_approval_for": "Edit the prompt behind the acme_main_v3 agent to remove the extra confirmation steps it gained, keeping the wording that carries a compliance purpose. Or reject and keep the current wording if it was added deliberately.",
@@ -698,5 +747,5 @@
   "cycles": 0,
   "prescription_accuracy": {}
  },
- "report_build": "sha256:010e7252b7a46ad1"
+ "report_build": "sha256:03983549ca2b970e"
 }

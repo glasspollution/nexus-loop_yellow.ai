@@ -228,6 +228,59 @@ def gaps_block(C):
     return out
 
 
+def coverage_measured(C):
+    """What share of each tenant's traffic can produce each number, measured from the corpus.
+
+    Coverage asks about capability, not incidence: a v3 session that had no reason to call a tool
+    is still covered; a v2_flow session that cannot emit tool_call at all is not. So for step
+    series the unit is the agent - an agent emits a step type or it does not, and every session it
+    served inherits that. For session fields it is simply whether the field is recorded.
+
+    Why this is measured rather than read from the catalog: the catalog's prose is stale in two
+    places on this corpus. It says v2_flow emits no tool_call, kb_lookup or guardrail steps, but
+    only tool_call is absent - v2_flow emits 10,997 kb_lookup rows. And it declares
+    cost_per_session coverage at 0.72 / 0.93 on the grounds that cost comes only from llm_call
+    steps "which v2_flow lacks", but v2_flow emits llm_call rows and every session in the corpus
+    carries a non-zero cost_usd. Putting 72% next to a knowledge-base or cost number would
+    understate what we can see, and a number invented in the modest direction is still invented.
+
+    The scored tool metrics keep the catalog-declared 0.72 / 0.93, which is what the tool_call hole
+    genuinely is - this block independently arrives at the same figure for tool_call. Keyed by
+    step type and by session field; the screen tries the full series name, then its prefix.
+    """
+    S = C["S"]
+    MI, ten, codes = S["MI"], S["ten"], S["codes"]
+    out = {t: {} for t in C["tenants"]}
+    agents = codes.get("agent_id")
+
+    groups = {}
+    for name, idx in MI.items():
+        if name.startswith("s.") or "." not in name:
+            continue
+        groups.setdefault(name.split(".", 1)[0], []).append(idx)
+    for st, idxs in groups.items():
+        seen = np.zeros(len(ten), dtype=bool)
+        for i in idxs:
+            seen |= S["M"][:, i, 0] > 0
+        if agents is None:
+            can = seen
+        else:
+            emitting = np.unique(agents[seen])
+            can = np.isin(agents, emitting) if len(emitting) else np.zeros(len(ten), dtype=bool)
+        for t in C["tenants"]:
+            tm = ten == S["tenant_index"][t]
+            out[t][st] = round(float((can & tm).sum()) / (int(tm.sum()) or 1), 4)
+
+    for name, idx in MI.items():
+        if not name.startswith("s."):
+            continue
+        has = S["M"][:, idx, 0] > 0
+        for t in C["tenants"]:
+            tm = ten == S["tenant_index"][t]
+            out[t][name] = round(float((has & tm).sum()) / (int(tm.sum()) or 1), 4)
+    return out
+
+
 def report(C, incidents, team="nexus-generic-scan", verifications=None, generated_at=None):
     findings, diagnoses, prescriptions = [], [], []
     for k, inc in enumerate(incidents, 1):
@@ -300,6 +353,7 @@ def report(C, incidents, team="nexus-generic-scan", verifications=None, generate
                             "authored - it interprets operator language, which is the one place this system "
                             "uses judgement rather than deriving from data. Refused breakdowns: "
                             + ("; ".join(refusals(C)) or "none") + "."),
+           "coverage_measured": coverage_measured(C),
            "metrics": metrics_block(C), "standard": [], "findings": findings, "diagnoses": diagnoses,
            "prescriptions": prescriptions, "verifications": verifications or [], "gaps": gaps_block(C),
            "self_assessment": {"cycles": 0, "prescription_accuracy": {}}}
