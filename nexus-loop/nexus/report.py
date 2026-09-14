@@ -217,14 +217,23 @@ def gaps_block(C):
             low = {t: v for t, v in cap["coverage"].items() if v < 0.9}
             for aid in hits if low else []:
                 cb = (cap.get("coverage_basis", "") or "").strip().rstrip(".")
+                # Attribute the catalog's stated reason rather than asserting it as our own. On
+                # this corpus the catalog's mechanism for the cost hole is not what the data shows
+                # (v2_flow does emit llm_call rows), even though the coverage figure is right,
+                # because we compute this metric on tool-eligible traffic only. Repeating a claim
+                # we have not verified would be a checkable falsehood sitting inside a refusal.
                 out.append({"ask_id": aid, "verdict": "COVERAGE_TOO_LOW",
-                            "why": ("%s is computable only on %s%s. We report it with its denominator "
-                                    "stated rather than blending the tenants into one figure that "
-                                    "describes neither. This is not a sample - it is a structural "
-                                    "blind spot: the excluded traffic cannot produce the number at all."
+                            "why": ("We compute %s on %s, and report it with that denominator stated "
+                                    "rather than blending the tenants into one figure that describes "
+                                    "neither. This is not a sample - it is a structural blind spot: "
+                                    "the excluded traffic cannot produce the number at all."
                                     % (cap["id"], ", ".join("%.0f%% of %s" % (100 * v, t)
-                                                            for t, v in low.items()),
-                                       ", because %s" % cb if cb else ""))})
+                                                            for t, v in low.items()))),
+                            "coverage_basis_declared": cb or None,
+                            "coverage_basis_note": (
+                                "The catalog gives the reason as: %s. We state the coverage we "
+                                "actually compute on; where the catalog's stated mechanism and the "
+                                "corpus disagree, the corpus is what we report." % cb) if cb else None})
     return out
 
 

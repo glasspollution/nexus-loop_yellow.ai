@@ -703,7 +703,9 @@
   {
    "ask_id": "A03",
    "verdict": "COVERAGE_TOO_LOW",
-   "why": "cost_per_session is computable only on 72% of acme-bank, because cost is only emitted on llm_call steps, which v2_flow lacks. We report it with its denominator stated rather than blending the tenants into one figure that describes neither. This is not a sample - it is a structural blind spot: the excluded traffic cannot produce the number at all."
+   "why": "We compute cost_per_session on 72% of acme-bank, and report it with that denominator stated rather than blending the tenants into one figure that describes neither. This is not a sample - it is a structural blind spot: the excluded traffic cannot produce the number at all.",
+   "coverage_basis_declared": "cost is only emitted on llm_call steps, which v2_flow lacks",
+   "coverage_basis_note": "The catalog gives the reason as: cost is only emitted on llm_call steps, which v2_flow lacks. We state the coverage we actually compute on; where the catalog's stated mechanism and the corpus disagree, the corpus is what we report."
   },
   {
    "ask_id": "A11",
@@ -747,5 +749,5 @@
   "cycles": 0,
   "prescription_accuracy": {}
  },
- "report_build": "sha256:5b83502a1ae39aa3"
+ "report_build": "sha256:3700c9625e374632"
 }
