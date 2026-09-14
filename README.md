@@ -11,20 +11,34 @@ which lookalikes are not problems, and which questions cannot be measured.
 
 ## Setup
 
-The organisers' kit is not included in this repository. Place it next to `nexus-loop/`:
+Everything needed to run is in this repository, including the organisers' TechQuest day-1 kit:
 
 ```
 <this repo>/
-├── kit/                   the practice kit (catalog.json, corpus/, labels/, asks.md, ground_truth/)
-├── tools/nexus-loop-kit/  generate.py, score.py, verify.py, schema/, replay/
-├── nexus-loop/
+├── kit/                   the practice kit: catalog.json, corpus/, corpus_sample/, labels/, asks.md, ground_truth/
+├── tools/nexus-loop-kit/  the organisers' tools: generate.py, score.py, verify.py, schema/, replay/, examples/
+├── nexus-loop/            the solution
 └── NEXUS_LOOP_HANDOFF.md
 ```
 
 ```bash
 pip install -r nexus-loop/requirements.txt
+
+# produce the report on the practice kit
 python nexus-loop/run.py --kit kit
+
+# score it with the organisers' script
+cd tools/nexus-loop-kit
+python score.py --report ../../nexus-loop/out/loop-report.json --ground-truth ../../kit/ground_truth/ground_truth.json
+cd ../..
+
+# verify everything (fast tests, then the full definition of done)
+python -m pytest -q nexus-loop/tests
+python nexus-loop/validation/make_corpora.py
+python nexus-loop/validation/run_all.py
 ```
+
+On day 6, point `--kit` at the sealed kit: `python nexus-loop/run.py --kit <day6-kit> --out out/day6 --team "<team>"`.
 
 ## Status
 

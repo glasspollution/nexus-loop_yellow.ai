@@ -1,8 +1,8 @@
-# Organiser-provided materials: obtain them from the TechQuest kit, do not redistribute
-kit/
-kit-*/
-tools/
+# Problem statement document (not needed to run)
 *.pdf
+
+# Other generated kits (the practice kit/ and tools/ are included so the solution runs from a clone)
+kit-*/
 
 # Generated / local
 __pycache__/
