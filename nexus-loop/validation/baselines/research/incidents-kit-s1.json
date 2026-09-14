@@ -1,0 +1,124 @@
+{
+ "incidents": [
+  {
+   "id": "i1",
+   "tenant": "northwind-retail",
+   "cohort": {
+    "tool": "get_order_status"
+   },
+   "from_day": 2,
+   "to_day": 16,
+   "is_regression": true,
+   "cause_class": "tool.contract_break",
+   "metrics": [
+    "s.handoff_unplanned",
+    "s.milestones_complete",
+    "s.resolved",
+    "tool_call.empty",
+    "tool_call.retry"
+   ],
+   "kind": "regression"
+  },
+  {
+   "id": "i2",
+   "tenant": "acme-bank",
+   "cohort": {
+    "agent_id": "acme_main_v3"
+   },
+   "from_day": 7,
+   "to_day": 19,
+   "is_regression": true,
+   "cause_class": "prompt.regression",
+   "metrics": [
+    "s.cost_usd",
+    "s.duration_s",
+    "s.turns"
+   ],
+   "kind": "regression"
+  },
+  {
+   "id": "i3",
+   "tenant": "acme-bank",
+   "cohort": {
+    "intent": "premium_card_info"
+   },
+   "from_day": 22,
+   "to_day": 36,
+   "is_regression": true,
+   "cause_class": "kb.gap",
+   "metrics": [
+    "kb_lookup.miss",
+    "kb_lookup.top_score",
+    "s.handoff_unplanned",
+    "s.milestone_ratio",
+    "s.milestones_complete",
+    "s.quality_score@v1",
+    "s.quality_score@v2",
+    "s.resolved"
+   ],
+   "kind": "regression"
+  },
+  {
+   "id": "i4",
+   "tenant": "northwind-retail",
+   "cohort": {},
+   "from_day": 27,
+   "to_day": 32,
+   "is_regression": false,
+   "cause_class": "load",
+   "metrics": [
+    "kb_lookup.duration_ms",
+    "llm_call.duration_ms",
+    "llm_call.fail",
+    "llm_call.retry",
+    "s.duration_s",
+    "s.tool_error_any",
+    "tool_call.duration_ms",
+    "tool_call.fail"
+   ],
+   "kind": "load"
+  },
+  {
+   "id": "i5",
+   "tenant": "acme-bank",
+   "cohort": {},
+   "from_day": 29,
+   "to_day": 32,
+   "is_regression": false,
+   "cause_class": "traffic_mix",
+   "metrics": [
+    "kb_lookup.miss"
+   ],
+   "kind": "composition"
+  },
+  {
+   "id": "i6",
+   "tenant": "*",
+   "cohort": {},
+   "from_day": 31,
+   "to_day": 55,
+   "is_regression": false,
+   "cause_class": "judge_change",
+   "metrics": [
+    "s.quality_score@v1",
+    "s.quality_score@v2"
+   ],
+   "kind": "instrument_boundary"
+  },
+  {
+   "id": "i7",
+   "tenant": "acme-bank",
+   "cohort": {
+    "intent": "branch_locator"
+   },
+   "from_day": 39,
+   "to_day": 49,
+   "is_regression": false,
+   "cause_class": "traffic_mix",
+   "metrics": [
+    "share:intent"
+   ],
+   "kind": "mix_shift"
+  }
+ ]
+}

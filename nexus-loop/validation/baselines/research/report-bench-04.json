@@ -1,0 +1,816 @@
+{
+ "team": "nexus-generic-scan",
+ "corpus": "SEALED",
+ "system_notes": "Generic scan: one changepoint test over every metric x cohort series, overdispersion-adjusted; breadth, composition and explain-away tests; diagnosis by runtime layer. Not implemented: standard mining, replay verification, the A09 reason judge, human decisions. Ask-to-metric mapping is hand-authored. Refused breakdowns: session.custom_dims.customer_ref: 77241 distinct values exceeds its cardinality budget of 200 - refused, not truncated.",
+ "metrics": [
+  {
+   "id": "m_containment",
+   "name": "Containment rate",
+   "ask_id": "A01",
+   "grain": "session",
+   "fidelity": "measured",
+   "coverage": {
+    "value": 1.0,
+    "basis": "session_end and handoff_by_design are present on every session"
+   },
+   "calibration": null,
+   "plan": {
+    "source": "corpus/sessions.jsonl.gz",
+    "filter": "session_end = 'resolved' OR (session_end = 'handoff' AND handoff_by_design = true)",
+    "denominator": "all sessions in scope",
+    "breakdowns": [
+     "tenant",
+     "intent",
+     "channel"
+    ],
+    "refused_breakdowns": [
+     "session.custom_dims.customer_ref: 77241 distinct values exceeds its cardinality budget of 200 - refused, not truncated"
+    ]
+   }
+  },
+  {
+   "id": "m_quality",
+   "name": "Judged quality",
+   "ask_id": "A06",
+   "grain": "session",
+   "fidelity": "judged",
+   "coverage": {
+    "value": 1.0,
+    "basis": "every session carries a judged score"
+   },
+   "calibration": {
+    "agreement": 0.6979,
+    "n": 96,
+    "basis": "labels/rubric_scores.jsonl, compared only within a matching judge_version; agreement means |human - judge| <= 0.5. Not 1.00: the human labels disagree with each other."
+   },
+   "plan": {
+    "source": "corpus/sessions.jsonl.gz",
+    "filter": "quality_score, segmented by judge_version",
+    "denominator": "sessions within one judge_version",
+    "breakdowns": [
+     "tenant",
+     "intent"
+    ],
+    "refused_breakdowns": [
+     "session.custom_dims.customer_ref: 77241 distinct values exceeds its cardinality budget of 200 - refused, not truncated"
+    ]
+   }
+  },
+  {
+   "id": "m_abandon_reason",
+   "name": "Abandonment reason",
+   "ask_id": "A09",
+   "grain": "session",
+   "fidelity": "judged",
+   "coverage": {
+    "value": 1.0,
+    "basis": "abandonment is measured on every session; its reason is a judgment"
+   },
+   "calibration": null,
+   "plan": {
+    "source": "corpus/sessions.jsonl.gz JOIN corpus/turns.jsonl.gz",
+    "filter": "session_end = 'abandoned' (measured: 4557 sessions); reason = judge abandon_reason_v1 over the last user turns. Calibration not published: labels/ holds no human abandonment-reason labels, so agreement cannot be computed and none is claimed.",
+    "denominator": "abandoned sessions",
+    "breakdowns": [
+     "tenant",
+     "intent"
+    ],
+    "alternatives_offered": [
+     "session_end = 'abandoned' alone is MEASURED but answers how many gave up, not why"
+    ],
+    "refused_breakdowns": [
+     "session.custom_dims.customer_ref: 77241 distinct values exceeds its cardinality budget of 200 - refused, not truncated"
+    ]
+   }
+  },
+  {
+   "id": "m_tool_failure_acme_bank",
+   "name": "Tool failure rate - acme-bank",
+   "ask_id": "A04",
+   "grain": "step",
+   "fidelity": "measured",
+   "coverage": {
+    "value": 0.7217,
+    "basis": "share of this tenant's sessions whose agent kind emits tool_call steps; the catalog says v2_flow emit none. Computed from the corpus (catalog declares 0.72).",
+    "excluded": [
+     "agent_kind in (v2_flow)"
+    ]
+   },
+   "calibration": null,
+   "plan": {
+    "source": "corpus/agent_steps.jsonl.gz WHERE step_type = 'tool_call'",
+    "filter": "outcome != 'ok' AND tenant = 'acme-bank'",
+    "denominator": "tool_call steps of eligible sessions",
+    "breakdowns": [
+     "tool_name",
+     "error_class"
+    ],
+    "refused_breakdowns": [
+     "session.custom_dims.customer_ref: 77241 distinct values exceeds its cardinality budget of 200 - refused, not truncated"
+    ]
+   }
+  },
+  {
+   "id": "m_silent_tool_acme_bank",
+   "name": "Empty tool payload rate (derived) - acme-bank",
+   "ask_id": "A04",
+   "grain": "step",
+   "fidelity": "derived",
+   "coverage": {
+    "value": 0.7217,
+    "basis": "derived from result_field_count on outcome='ok' tool calls of this tenant; same coverage hole as its tool failure rate",
+    "excluded": [
+     "agent_kind in (v2_flow)"
+    ]
+   },
+   "calibration": null,
+   "plan": {
+    "source": "corpus/agent_steps.jsonl.gz WHERE step_type = 'tool_call' AND outcome = 'ok'",
+    "filter": "result_field_count = 0 AND tenant = 'acme-bank'",
+    "denominator": "outcome='ok' tool_call steps of eligible sessions",
+    "breakdowns": [
+     "tool_name"
+    ],
+    "refused_breakdowns": [
+     "session.custom_dims.customer_ref: 77241 distinct values exceeds its cardinality budget of 200 - refused, not truncated"
+    ]
+   }
+  },
+  {
+   "id": "m_tool_failure_northwind_retail",
+   "name": "Tool failure rate - northwind-retail",
+   "ask_id": "A04",
+   "grain": "step",
+   "fidelity": "measured",
+   "coverage": {
+    "value": 0.9301,
+    "basis": "share of this tenant's sessions whose agent kind emits tool_call steps; the catalog says v2_flow emit none. Computed from the corpus (catalog declares 0.93).",
+    "excluded": [
+     "agent_kind in (v2_flow)"
+    ]
+   },
+   "calibration": null,
+   "plan": {
+    "source": "corpus/agent_steps.jsonl.gz WHERE step_type = 'tool_call'",
+    "filter": "outcome != 'ok' AND tenant = 'northwind-retail'",
+    "denominator": "tool_call steps of eligible sessions",
+    "breakdowns": [
+     "tool_name",
+     "error_class"
+    ],
+    "refused_breakdowns": [
+     "session.custom_dims.customer_ref: 77241 distinct values exceeds its cardinality budget of 200 - refused, not truncated"
+    ]
+   }
+  },
+  {
+   "id": "m_silent_tool_northwind_retail",
+   "name": "Empty tool payload rate (derived) - northwind-retail",
+   "ask_id": "A04",
+   "grain": "step",
+   "fidelity": "derived",
+   "coverage": {
+    "value": 0.9301,
+    "basis": "derived from result_field_count on outcome='ok' tool calls of this tenant; same coverage hole as its tool failure rate",
+    "excluded": [
+     "agent_kind in (v2_flow)"
+    ]
+   },
+   "calibration": null,
+   "plan": {
+    "source": "corpus/agent_steps.jsonl.gz WHERE step_type = 'tool_call' AND outcome = 'ok'",
+    "filter": "result_field_count = 0 AND tenant = 'northwind-retail'",
+    "denominator": "outcome='ok' tool_call steps of eligible sessions",
+    "breakdowns": [
+     "tool_name"
+    ],
+    "refused_breakdowns": [
+     "session.custom_dims.customer_ref: 77241 distinct values exceeds its cardinality budget of 200 - refused, not truncated"
+    ]
+   }
+  }
+ ],
+ "standard": [],
+ "findings": [
+  {
+   "id": "f1",
+   "tenant": "acme-bank",
+   "cohort": {
+    "tool": "block_card"
+   },
+   "metric": "s.cost_usd",
+   "window": {
+    "from_day": 8,
+    "to_day": 20
+   },
+   "is_regression": true,
+   "evidence": [
+    "tool_call.timeout on tool=block_card, days 14-20: 0.00798 -> 0.06931 (+1502%, z=6.5, baseline: its own prior days)",
+    "tool_call.timeout on intent=card_block, days 14-20: 0.00798 -> 0.06931 (+1502%, z=6.5, baseline: its own prior days)",
+    "s.cost_usd on intent=card_block, days 10-12: 0.05035 -> 0.06608 (+45%, z=5.9, baseline: its own prior days)",
+    "s.cost_usd on tool=block_card, days 10-12: 0.05035 -> 0.06608 (+45%, z=5.9, baseline: its own prior days)",
+    "s.turns on tool=block_card, days 10-12: 5.248 -> 6.318 (+30%, z=5.9, baseline: its own prior days)",
+    "s.turns on intent=card_block, days 10-22: 5.444 -> 6.137 (+15%, z=4.7, baseline: its own prior days)"
+   ],
+   "observed": 0.06931,
+   "expected": 0.00798,
+   "severity": "high",
+   "impact": {
+    "conversations_affected": 430,
+    "share_of_traffic": 0.0789,
+    "downstream": {
+     "would_have_resolved_at_baseline": 23,
+     "unplanned_handoffs": 54,
+     "abandoned": 23
+    },
+    "cost_usd": 29.4,
+    "days_running": 11,
+    "derivation": "430 sessions matched the cohort over 11 days (7.9% of this tenant's traffic in the window). Baseline: this cohort's own days before onset. Resolution 0.7791 against 0.8317, so 23 conversations that would have resolved did not; 54 ended in a handoff the agent was not built to make and 23 were abandoned. Cost per session $0.06838 against $0.05088 (eligible traffic only), an excess spend of $7.52 over the window."
+   },
+   "if_nothing_changes": "At the observed rate this costs about 2 unresolved conversations a day in this cohort, and 13% of its conversations reach a human who was not meant to be involved.",
+   "audience": [
+    "agent_builder",
+    "business_owner"
+   ]
+  },
+  {
+   "id": "f2",
+   "tenant": "acme-bank",
+   "cohort": {
+    "agent_id": "acme_main_v3"
+   },
+   "metric": "s.cost_usd",
+   "window": {
+    "from_day": 8,
+    "to_day": 20
+   },
+   "is_regression": true,
+   "evidence": [
+    "s.cost_usd on agent_id=acme_main_v3, days 10-20: 0.04288 -> 0.05668 (+86%, z=14.3, baseline: its own prior days)",
+    "s.turns on agent_id=acme_main_v3, days 10-20: 4.461 -> 6.296 (+56%, z=11.8, baseline: its own prior days)",
+    "s.duration_s on agent_id=acme_main_v3, days 10-20: 102.4 -> 144.2 (+57%, z=11.0, baseline: its own prior days)",
+    "s.cost_usd on segment=priority, days 10-20: 0.04253 -> 0.04895 (+36%, z=10.4, baseline: its own prior days)",
+    "s.cost_usd on tenant-wide, days 10-20: 0.04354 -> 0.0538 (+32%, z=9.8, baseline: its own prior days)",
+    "s.cost_usd on intent=balance_enquiry, days 10-19: 0.03338 -> 0.04082 (+33%, z=7.8, baseline: its own prior days)",
+    "s.cost_usd on tool=get_balance, days 10-19: 0.03338 -> 0.04082 (+33%, z=7.8, baseline: its own prior days)",
+    "s.turns on tool=get_balance, days 10-19: 3.411 -> 3.922 (+22%, z=7.4, baseline: its own prior days)"
+   ],
+   "observed": 0.05668,
+   "expected": 0.04288,
+   "severity": "high",
+   "impact": {
+    "conversations_affected": 1303,
+    "share_of_traffic": 0.2391,
+    "downstream": {
+     "would_have_resolved_at_baseline": 12,
+     "unplanned_handoffs": 119,
+     "abandoned": 81
+    },
+    "cost_usd": 105.58,
+    "days_running": 11,
+    "derivation": "1303 sessions matched the cohort over 11 days (23.9% of this tenant's traffic in the window). Baseline: this cohort's own days before onset. Resolution 0.8189 against 0.8282, so 12 conversations that would have resolved did not; 119 ended in a handoff the agent was not built to make and 81 were abandoned. Cost per session $0.08103 against $0.04361 (eligible traffic only), an excess spend of $48.76 over the window."
+   },
+   "if_nothing_changes": "Outcomes are holding, but this cohort is spending about $4.43 a day more than its baseline for the same results, and customers are taking longer to get them.",
+   "audience": [
+    "agent_builder",
+    "business_owner"
+   ]
+  },
+  {
+   "id": "f3",
+   "tenant": "acme-bank",
+   "cohort": {
+    "intent": "premium_card_info"
+   },
+   "metric": "kb_lookup.miss",
+   "window": {
+    "from_day": 23,
+    "to_day": 33
+   },
+   "is_regression": true,
+   "evidence": [
+    "kb_lookup.miss on intent=premium_card_info, days 25-33: 0.08724 -> 1 (+1088%, z=123.6, baseline: sibling cohorts, same window)",
+    "kb_lookup.top_score on intent=premium_card_info, days 25-33: 0.7467 -> 0.2506 (-68%, z=58.5, baseline: sibling cohorts, same window)",
+    "kb_lookup.miss on tenant-wide, days 28-33: 0.08844 -> 0.1328 (+158%, z=16.6, baseline: its own prior days)",
+    "kb_lookup.miss on channel=whatsapp, days 28-32: 0.09678 -> 0.1637 (+162%, z=11.1, baseline: its own prior days)",
+    "kb_lookup.miss on segment=priority, days 26-33: 0.09032 -> 0.1576 (+170%, z=10.6, baseline: its own prior days)",
+    "kb_lookup.miss on channel=web, days 27-33: 0.08151 -> 0.1662 (+179%, z=9.4, baseline: its own prior days)",
+    "kb_lookup.miss on segment=affluent, days 27-33: 0.09415 -> 0.1617 (+127%, z=8.3, baseline: its own prior days)",
+    "kb_lookup.miss on agent_id=acme_lending_v3, days 28-33: 0.08765 -> 0.201 (+171%, z=7.7, baseline: its own prior days)"
+   ],
+   "observed": 1.0,
+   "expected": 0.08724,
+   "severity": "high",
+   "impact": {
+    "conversations_affected": 175,
+    "share_of_traffic": 0.0372,
+    "downstream": {
+     "would_have_resolved_at_baseline": 65,
+     "unplanned_handoffs": 98,
+     "abandoned": 14
+    },
+    "cost_usd": 7.1,
+    "days_running": 9,
+    "derivation": "175 sessions matched the cohort over 9 days (3.7% of this tenant's traffic in the window). Baseline: sibling cohorts over the same days, because this cohort has no before-period (siblings sharing its milestone chain: product_info). Resolution 0.3600 against 0.7313, so 65 conversations that would have resolved did not; 98 ended in a handoff the agent was not built to make and 14 were abandoned. Cost per session $0.05463 against $0.04675 (eligible traffic only), an excess spend of $1.03 over the window."
+   },
+   "if_nothing_changes": "At the observed rate this costs about 7 unresolved conversations a day in this cohort, and 56% of its conversations reach a human who was not meant to be involved.",
+   "audience": [
+    "agent_builder",
+    "business_owner"
+   ]
+  },
+  {
+   "id": "f4",
+   "tenant": "acme-bank",
+   "cohort": {
+    "agent_id": "acme_cards_v3"
+   },
+   "metric": "llm_call.fail",
+   "window": {
+    "from_day": 28,
+    "to_day": 34
+   },
+   "is_regression": true,
+   "evidence": [
+    "llm_call.fail on agent_id=acme_cards_v3, days 30-34: 0.00288 -> 0.01602 (+1370%, z=11.7, baseline: its own prior days)",
+    "llm_call.tokens on tenant-wide, days 30-34: 2283 -> 3227 (+57%, z=7.4, baseline: its own prior days)",
+    "llm_call.tokens on agent_id=acme_cards_v3, days 30-34: 2278 -> 7721 (+362%, z=6.3, baseline: its own prior days)",
+    "s.milestones_complete on agent_id=acme_cards_v3, days 30-34: 0.8042 -> 0.6776 (-21%, z=5.4, baseline: its own prior days)",
+    "s.resolved on agent_id=acme_cards_v3, days 30-34: 0.8042 -> 0.6776 (-21%, z=5.4, baseline: its own prior days)"
+   ],
+   "observed": 0.01602,
+   "expected": 0.00288,
+   "severity": "high",
+   "impact": {
+    "conversations_affected": 410,
+    "share_of_traffic": 0.1676,
+    "downstream": {
+     "would_have_resolved_at_baseline": 73,
+     "unplanned_handoffs": 85,
+     "abandoned": 46
+    },
+    "cost_usd": 16.45,
+    "days_running": 5,
+    "derivation": "410 sessions matched the cohort over 5 days (16.8% of this tenant's traffic in the window). Baseline: this cohort's own days before onset. Resolution 0.6244 against 0.8034, so 73 conversations that would have resolved did not; 85 ended in a handoff the agent was not built to make and 46 were abandoned. Cost per session $0.04012 against $0.04443 (eligible traffic only), an excess spend of $0.00 over the window."
+   },
+   "if_nothing_changes": "At the observed rate this costs about 15 unresolved conversations a day in this cohort, and 21% of its conversations reach a human who was not meant to be involved.",
+   "audience": [
+    "agent_builder",
+    "business_owner"
+   ]
+  },
+  {
+   "id": "f5",
+   "tenant": "northwind-retail",
+   "cohort": {
+    "tool": "get_order_status"
+   },
+   "metric": "s.abandoned",
+   "window": {
+    "from_day": 31,
+    "to_day": 47
+   },
+   "is_regression": true,
+   "evidence": [
+    "tool_call.empty on tool=get_order_status, days 33-47: 0 -> 0.02619 (+100%, z=28.2, baseline: its own prior days)",
+    "tool_call.empty on tenant-wide, days 33-47: 0 -> 0.02394 (+100%, z=29.9, baseline: its own prior days)",
+    "tool_call.empty on intent=order_status, days 33-47: 0 -> 0.02619 (+100%, z=28.2, baseline: its own prior days)",
+    "tool_call.retry on tenant-wide, days 33-47: 0 -> 0.01811 (+100%, z=26.2, baseline: its own prior days)",
+    "tool_call.retry on intent=order_status, days 33-47: 0 -> 0.01948 (+100%, z=24.8, baseline: its own prior days)",
+    "tool_call.retry on tool=get_order_status, days 33-47: 0 -> 0.01948 (+100%, z=24.8, baseline: its own prior days)",
+    "tool_call.empty on segment=affluent, days 34-47: 0 -> 0.01832 (+100%, z=18.4, baseline: its own prior days)",
+    "tool_call.empty on agent_id=nw_care_v3, days 33-47: 0 -> 0.01072 (+100%, z=17.8, baseline: its own prior days)"
+   ],
+   "observed": 0.02619,
+   "expected": 0.0,
+   "severity": "high",
+   "impact": {
+    "conversations_affected": 2971,
+    "share_of_traffic": 0.2654,
+    "downstream": {
+     "would_have_resolved_at_baseline": 316,
+     "unplanned_handoffs": 485,
+     "abandoned": 181
+    },
+    "cost_usd": 102.92,
+    "days_running": 15,
+    "derivation": "2971 sessions matched the cohort over 15 days (26.5% of this tenant's traffic in the window). Baseline: this cohort's own days before onset. Resolution 0.7546 against 0.8610, so 316 conversations that would have resolved did not; 485 ended in a handoff the agent was not built to make and 181 were abandoned. Cost per session $0.03464 against $0.03476 (eligible traffic only), an excess spend of $0.00 over the window."
+   },
+   "if_nothing_changes": "At the observed rate this costs about 21 unresolved conversations a day in this cohort, and 16% of its conversations reach a human who was not meant to be involved.",
+   "audience": [
+    "agent_builder",
+    "business_owner"
+   ]
+  },
+  {
+   "id": "f6",
+   "tenant": "northwind-retail",
+   "cohort": {
+    "agent_id": "nw_returns_v3"
+   },
+   "metric": "s.handoff_unplanned",
+   "window": {
+    "from_day": 34,
+    "to_day": 48
+   },
+   "is_regression": true,
+   "evidence": [
+    "s.handoff_unplanned on agent_id=nw_returns_v3, days 36-48: 0.09517 -> 0.1644 (+77%, z=6.6, baseline: its own prior days)"
+   ],
+   "observed": 0.16442,
+   "expected": 0.09517,
+   "severity": "high",
+   "impact": {
+    "conversations_affected": 2993,
+    "share_of_traffic": 0.307,
+    "downstream": {
+     "would_have_resolved_at_baseline": 124,
+     "unplanned_handoffs": 480,
+     "abandoned": 157
+    },
+    "cost_usd": 129.62,
+    "days_running": 13,
+    "derivation": "2993 sessions matched the cohort over 13 days (30.7% of this tenant's traffic in the window). Baseline: this cohort's own days before onset. Resolution 0.7477 against 0.7892, so 124 conversations that would have resolved did not; 480 ended in a handoff the agent was not built to make and 157 were abandoned. Cost per session $0.04331 against $0.04361 (eligible traffic only), an excess spend of $0.00 over the window."
+   },
+   "if_nothing_changes": "At the observed rate this costs about 10 unresolved conversations a day in this cohort, and 16% of its conversations reach a human who was not meant to be involved.",
+   "audience": [
+    "agent_builder",
+    "business_owner"
+   ]
+  },
+  {
+   "id": "f7",
+   "tenant": "acme-bank",
+   "cohort": {
+    "agent_id": "acme_wealth_v3"
+   },
+   "metric": "launch",
+   "window": {
+    "from_day": 12,
+    "to_day": 55
+   },
+   "is_regression": false,
+   "evidence": [
+    "first seen on day 12; 3214 sessions; resolution 0.830 vs 0.804 for the rest of the tenant"
+   ],
+   "severity": "low",
+   "not_a_regression_because": "agent_id=acme_wealth_v3 did not exist before day 12, so it has no history to regress from; compared with its siblings over the same days, no mechanism or outcome metric fired."
+  },
+  {
+   "id": "f8",
+   "tenant": "northwind-retail",
+   "cohort": {},
+   "metric": "kb_lookup.duration_ms",
+   "window": {
+    "from_day": 16,
+    "to_day": 19
+   },
+   "is_regression": false,
+   "evidence": [
+    "llm_call.duration_ms on tenant-wide, days 17-19: 1576 -> 2728 (+123%, z=77.4, baseline: its own prior days)",
+    "llm_call.duration_ms on channel=web, days 17-19: 1528 -> 2679 (+123%, z=54.6, baseline: its own prior days)",
+    "llm_call.duration_ms on agent_id=nw_returns_v3, days 17-19: 1576 -> 2698 (+125%, z=51.7, baseline: its own prior days)",
+    "llm_call.duration_ms on segment=priority, days 17-19: 1575 -> 2706 (+121%, z=51.4, baseline: its own prior days)",
+    "llm_call.duration_ms on segment=affluent, days 17-19: 1589 -> 2771 (+121%, z=48.3, baseline: its own prior days)",
+    "llm_call.duration_ms on agent_id=nw_care_v3, days 17-19: 1581 -> 2724 (+123%, z=46.6, baseline: its own prior days)",
+    "llm_call.duration_ms on tool=get_order_status, days 17-19: 1583 -> 2614 (+123%, z=40.6, baseline: its own prior days)",
+    "llm_call.duration_ms on segment=mass, days 17-19: 1565 -> 2708 (+128%, z=40.3, baseline: its own prior days)"
+   ],
+   "severity": "low",
+   "not_a_regression_because": "Traffic ran 2.8x its typical daily volume on days 17-19, and kb_lookup.duration_ms, llm_call.duration_ms, llm_call.fail, llm_call.retry, s.tool_error_any, tool_call.duration_ms, tool_call.fail moved with it across every cohort at once - there is no locus. Resolution went 0.7955 -> 0.7720, and no outcome metric fired. Every co-moving deviation ended within 3 days of volume returning to normal, so nothing outlives its driver. This is a capacity / reliability event for the platform view, not a quality regression."
+  },
+  {
+   "id": "f9",
+   "tenant": "acme-bank",
+   "cohort": {},
+   "metric": "s.quality_score@v1",
+   "window": {
+    "from_day": 34,
+    "to_day": 55
+   },
+   "is_regression": false,
+   "evidence": [
+    "applies to every tenant",
+    "judge_version flips v1 -> v2 on day 34 for 9 agents across every tenant",
+    "acme-bank: judged quality 3.819 -> 3.337 (-0.482) if pooled naively across the boundary",
+    "northwind-retail: judged quality 3.849 -> 3.210 (-0.639) if pooled naively across the boundary"
+   ],
+   "severity": "low",
+   "not_a_regression_because": "judge_version - the version of the instrument that produces judged scores - changes on day 34 for every agent on every tenant at once. Judged metrics are comparable only within one version, so any trend across this day measures the rubric, not the agents. The scanner never compares judged values across it; the naive pooled trend is shown only to make the size of the trap visible."
+  },
+  {
+   "id": "f10",
+   "tenant": "acme-bank",
+   "cohort": {
+    "intent": "branch_locator"
+   },
+   "metric": "share:intent",
+   "window": {
+    "from_day": 37,
+    "to_day": 45
+   },
+   "is_regression": false,
+   "evidence": [
+    "intent=branch_locator share of acme-bank traffic: typical 0.130, during 0.419",
+    "tenant resolution moved +4.88% raw but +1.82% once re-weighted to the baseline intent mix",
+    "re-weighting by intent explains the move: raw +27.6%, mix-standardized +4.1%"
+   ],
+   "severity": "low",
+   "not_a_regression_because": "The share of traffic from intent=branch_locator moved from a typical 13.0% to 41.9% for days 37-45. That changes aggregates without anything getting better or worse: tenant resolution moved +4.88% raw but +1.82% once re-weighted to the baseline intent mix. Stratify by intent before reading any tenant-level trend over this window."
+  }
+ ],
+ "diagnoses": [
+  {
+   "id": "d1",
+   "finding_id": "f1",
+   "cause_class": "tool.outage",
+   "confidence": 0.75,
+   "attributed_change": null,
+   "evidence": [
+    "tool_call.timeout on tool=block_card, days 14-20: 0.00798 -> 0.06931 (+1502%, z=6.5, baseline: its own prior days)",
+    "tool_call.timeout on intent=card_block, days 14-20: 0.00798 -> 0.06931 (+1502%, z=6.5, baseline: its own prior days)",
+    "s.cost_usd on intent=card_block, days 10-12: 0.05035 -> 0.06608 (+45%, z=5.9, baseline: its own prior days)"
+   ]
+  },
+  {
+   "id": "d2",
+   "finding_id": "f2",
+   "cause_class": "prompt.regression",
+   "confidence": 0.75,
+   "attributed_change": {
+    "kind": "prompt",
+    "day": 10
+   },
+   "evidence": [
+    "a prompt change and a model change both align; no per-call model metric moved, so the prompt is the better-supported cause",
+    "s.cost_usd on agent_id=acme_main_v3, days 10-20: 0.04288 -> 0.05668 (+86%, z=14.3, baseline: its own prior days)",
+    "s.turns on agent_id=acme_main_v3, days 10-20: 4.461 -> 6.296 (+56%, z=11.8, baseline: its own prior days)",
+    "s.duration_s on agent_id=acme_main_v3, days 10-20: 102.4 -> 144.2 (+57%, z=11.0, baseline: its own prior days)",
+    "attributed via config_timeline: acme_main_v3 p_v3 -> p_v4"
+   ]
+  },
+  {
+   "id": "d3",
+   "finding_id": "f3",
+   "cause_class": "kb.gap",
+   "confidence": 0.9,
+   "attributed_change": {
+    "kind": "kb",
+    "day": 24
+   },
+   "evidence": [
+    "kb_lookup.miss on intent=premium_card_info, days 25-33: 0.08724 -> 1 (+1088%, z=123.6, baseline: sibling cohorts, same window)",
+    "kb_lookup.top_score on intent=premium_card_info, days 25-33: 0.7467 -> 0.2506 (-68%, z=58.5, baseline: sibling cohorts, same window)",
+    "kb_lookup.miss on tenant-wide, days 28-33: 0.08844 -> 0.1328 (+158%, z=16.6, baseline: its own prior days)",
+    "attributed via config_timeline: kb kb_2026_06_a -> kb_2026_06_c"
+   ]
+  },
+  {
+   "id": "d4",
+   "finding_id": "f4",
+   "cause_class": "model.change",
+   "confidence": 0.75,
+   "attributed_change": null,
+   "evidence": [
+    "llm_call.fail on agent_id=acme_cards_v3, days 30-34: 0.00288 -> 0.01602 (+1370%, z=11.7, baseline: its own prior days)",
+    "llm_call.tokens on tenant-wide, days 30-34: 2283 -> 3227 (+57%, z=7.4, baseline: its own prior days)",
+    "llm_call.tokens on agent_id=acme_cards_v3, days 30-34: 2278 -> 7721 (+362%, z=6.3, baseline: its own prior days)"
+   ]
+  },
+  {
+   "id": "d5",
+   "finding_id": "f5",
+   "cause_class": "tool.contract_break",
+   "confidence": 0.9,
+   "attributed_change": {
+    "kind": "tool",
+    "day": 33
+   },
+   "evidence": [
+    "tool_call.empty on tool=get_order_status, days 33-47: 0 -> 0.02619 (+100%, z=28.2, baseline: its own prior days)",
+    "tool_call.empty on tenant-wide, days 33-47: 0 -> 0.02394 (+100%, z=29.9, baseline: its own prior days)",
+    "tool_call.empty on intent=order_status, days 33-47: 0 -> 0.02619 (+100%, z=28.2, baseline: its own prior days)",
+    "attributed via config_timeline: get_order_status 3.2.0 -> 3.3.0"
+   ]
+  },
+  {
+   "id": "d6",
+   "finding_id": "f6",
+   "cause_class": "kb.gap",
+   "confidence": 0.75,
+   "attributed_change": {
+    "kind": "kb",
+    "day": 35
+   },
+   "evidence": [
+    "s.handoff_unplanned on agent_id=nw_returns_v3, days 36-48: 0.09517 -> 0.1644 (+77%, z=6.6, baseline: its own prior days)",
+    "attributed via config_timeline: kb kb_2026_06_b -> kb_2026_07_a"
+   ]
+  },
+  {
+   "id": "d7",
+   "finding_id": "f7",
+   "cause_class": "traffic_mix",
+   "confidence": 0.7,
+   "attributed_change": null,
+   "evidence": [
+    "first seen on day 12; 3214 sessions; resolution 0.830 vs 0.804 for the rest of the tenant"
+   ]
+  },
+  {
+   "id": "d8",
+   "finding_id": "f8",
+   "cause_class": "load",
+   "confidence": 0.9,
+   "attributed_change": null,
+   "evidence": [
+    "llm_call.duration_ms on tenant-wide, days 17-19: 1576 -> 2728 (+123%, z=77.4, baseline: its own prior days)",
+    "llm_call.duration_ms on channel=web, days 17-19: 1528 -> 2679 (+123%, z=54.6, baseline: its own prior days)",
+    "llm_call.duration_ms on agent_id=nw_returns_v3, days 17-19: 1576 -> 2698 (+125%, z=51.7, baseline: its own prior days)"
+   ]
+  },
+  {
+   "id": "d9",
+   "finding_id": "f9",
+   "cause_class": "judge_change",
+   "confidence": 0.95,
+   "attributed_change": null,
+   "evidence": [
+    "judge_version flips v1 -> v2 on day 34 for 9 agents across every tenant",
+    "acme-bank: judged quality 3.819 -> 3.337 (-0.482) if pooled naively across the boundary",
+    "northwind-retail: judged quality 3.849 -> 3.210 (-0.639) if pooled naively across the boundary"
+   ]
+  },
+  {
+   "id": "d10",
+   "finding_id": "f10",
+   "cause_class": "traffic_mix",
+   "confidence": 0.85,
+   "attributed_change": null,
+   "evidence": [
+    "intent=branch_locator share of acme-bank traffic: typical 0.130, during 0.419",
+    "tenant resolution moved +4.88% raw but +1.82% once re-weighted to the baseline intent mix",
+    "re-weighting by intent explains the move: raw +27.6%, mix-standardized +4.1%"
+   ]
+  }
+ ],
+ "prescriptions": [
+  {
+   "id": "p1",
+   "diagnosis_id": "d1",
+   "change_type": "tool.fallback",
+   "target": "block_card",
+   "description": "Address tool.outage on {'tool': 'block_card'}",
+   "autonomy_rung": "L2",
+   "predicted_delta": {
+    "metric": "tool_call.timeout",
+    "from": 0.06931,
+    "to": 0.00798
+   },
+   "decision": {
+    "asking_approval_for": "tool.fallback on {'tool': 'block_card'}",
+    "risk_if_diagnosis_wrong": "If the cause is not what the evidence points to, the change is inert and the metric does not move.",
+    "would_not_ship_if": "the replay shows any regression on the golden set"
+   }
+  },
+  {
+   "id": "p2",
+   "diagnosis_id": "d2",
+   "change_type": "prompt.edit",
+   "target": "acme_main_v3",
+   "description": "Address prompt.regression on {'agent_id': 'acme_main_v3'}",
+   "autonomy_rung": "L2",
+   "predicted_delta": {
+    "metric": "s.cost_usd",
+    "from": 0.05668,
+    "to": 0.04288
+   },
+   "decision": {
+    "asking_approval_for": "prompt.edit on {'agent_id': 'acme_main_v3'}",
+    "risk_if_diagnosis_wrong": "If the cause is not what the evidence points to, the change is inert and the metric does not move.",
+    "would_not_ship_if": "the replay shows any regression on the golden set"
+   }
+  },
+  {
+   "id": "p3",
+   "diagnosis_id": "d3",
+   "change_type": "kb.add",
+   "target": "premium_card_info",
+   "description": "Address kb.gap on {'intent': 'premium_card_info'}",
+   "autonomy_rung": "L2",
+   "predicted_delta": {
+    "metric": "kb_lookup.miss",
+    "from": 1.0,
+    "to": 0.08724
+   },
+   "decision": {
+    "asking_approval_for": "kb.add on {'intent': 'premium_card_info'}",
+    "risk_if_diagnosis_wrong": "If the cause is not what the evidence points to, the change is inert and the metric does not move.",
+    "would_not_ship_if": "the replay shows any regression on the golden set"
+   }
+  },
+  {
+   "id": "p4",
+   "diagnosis_id": "d4",
+   "change_type": "revert",
+   "target": "acme_cards_v3",
+   "description": "Address model.change on {'agent_id': 'acme_cards_v3'}",
+   "autonomy_rung": "L2",
+   "predicted_delta": {
+    "metric": "llm_call.fail",
+    "from": 0.01602,
+    "to": 0.00288
+   },
+   "decision": {
+    "asking_approval_for": "revert on {'agent_id': 'acme_cards_v3'}",
+    "risk_if_diagnosis_wrong": "If the cause is not what the evidence points to, the change is inert and the metric does not move.",
+    "would_not_ship_if": "the replay shows any regression on the golden set"
+   }
+  },
+  {
+   "id": "p5",
+   "diagnosis_id": "d5",
+   "change_type": "tool.validate",
+   "target": "get_order_status",
+   "description": "Address tool.contract_break on {'tool': 'get_order_status'}",
+   "autonomy_rung": "L2",
+   "predicted_delta": {
+    "metric": "tool_call.empty",
+    "from": 0.02619,
+    "to": 0.0
+   },
+   "decision": {
+    "asking_approval_for": "tool.validate on {'tool': 'get_order_status'}",
+    "risk_if_diagnosis_wrong": "If the cause is not what the evidence points to, the change is inert and the metric does not move.",
+    "would_not_ship_if": "the replay shows any regression on the golden set"
+   }
+  },
+  {
+   "id": "p6",
+   "diagnosis_id": "d6",
+   "change_type": "kb.add",
+   "target": "nw_returns_v3",
+   "description": "Address kb.gap on {'agent_id': 'nw_returns_v3'}",
+   "autonomy_rung": "L2",
+   "predicted_delta": {
+    "metric": "s.handoff_unplanned",
+    "from": 0.16442,
+    "to": 0.09517
+   },
+   "decision": {
+    "asking_approval_for": "kb.add on {'agent_id': 'nw_returns_v3'}",
+    "risk_if_diagnosis_wrong": "If the cause is not what the evidence points to, the change is inert and the metric does not move.",
+    "would_not_ship_if": "the replay shows any regression on the golden set"
+   }
+  }
+ ],
+ "verifications": [],
+ "gaps": [
+  {
+   "ask_id": "A03",
+   "verdict": "COVERAGE_TOO_LOW",
+   "why": "cost_per_session is computable only on 72% of acme-bank. cost is only emitted on llm_call steps, which v2_flow lacks Reported with its denominator stated rather than blended."
+  },
+  {
+   "ask_id": "A11",
+   "verdict": "NOT_MEASURABLE",
+   "why": "no failover mechanism exists in the runtime, so no failover event is ever emitted. There is no primary/secondary path to observe.",
+   "nearest_proxy": "llm_call.retry_count > 0",
+   "why_the_proxy_misleads": "but those are QUALITY retries at a different temperature, not failovers. Reporting them as failover would under-report and read as '0% failover', i.e. as good news.",
+   "required_event": {
+    "name": "failover",
+    "grain": "step",
+    "fields": [
+     "from_target",
+     "to_target",
+     "reason",
+     "recovered"
+    ],
+    "owner": "conversation-runtime"
+   }
+  },
+  {
+   "ask_id": "A09",
+   "verdict": "REQUIRES_NEW_JUDGE",
+   "why": "session_end='abandoned' is MEASURED. WHY the user abandoned is a judgment about meaning and needs a versioned judged signal with a published calibration. Inferring it from the end code is a Rule 1 violation dressed up as an aggregate.",
+   "nearest_proxy": "session_end = 'abandoned' (measured)",
+   "why_the_proxy_misleads": "it counts everyone who left, including users who got their answer and simply stopped replying; the question is why",
+   "required_event": {
+    "name": "abandonment_reason_judgment",
+    "grain": "session",
+    "fields": [
+     "session_id",
+     "judge_version",
+     "reason",
+     "confidence"
+    ],
+    "owner": "platform team",
+    "calibration_needs": "human abandonment-reason labels on a sample of abandoned sessions, per judge_version"
+   }
+  }
+ ],
+ "self_assessment": {
+  "cycles": 0,
+  "prescription_accuracy": {}
+ }
+}

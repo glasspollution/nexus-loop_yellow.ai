@@ -1,0 +1,82 @@
+{
+ "corpus": "bench-02",
+ "ops": {
+  "B2": {
+   "removed": 0,
+   "reassigned": 0,
+   "clones": 0,
+   "rows_dropped": 5934
+  },
+  "N1": {
+   "targets": 848,
+   "hits": 781,
+   "flips": {
+    "abandoned": 20
+   }
+  },
+  "N2": {
+   "targets": 1870,
+   "hits": 324,
+   "flips": {
+    "handoff": 324
+   }
+  },
+  "N3": {
+   "targets": 1022,
+   "hits": 278,
+   "flips": {
+    "abandoned": 8
+   }
+  },
+  "N4": {
+   "targets": 689,
+   "hits": 260,
+   "flips": {
+    "abandoned": 161,
+    "handoff": 99
+   }
+  }
+ },
+ "duration_floor_mismatch_in_touched": 0,
+ "counts": {
+  "sessions": 80252,
+  "agent_steps": 876436,
+  "turns": 364221,
+  "csat_responses": 6915,
+  "config_changes": 20
+ },
+ "config_added": [
+  [
+   22,
+   "tool",
+   "reschedule_delivery",
+   "1.0.0",
+   "2.0.0",
+   "carrier slot API v2 migration"
+  ],
+  [
+   32,
+   "tool",
+   "reschedule_delivery",
+   "2.0.0",
+   "2.0.1",
+   "performance patch slot query index"
+  ],
+  [
+   42,
+   "prompt",
+   "acme_cards_v3",
+   "p_v4",
+   "p_v5",
+   "structured JSON reply format"
+  ],
+  [
+   50,
+   "prompt",
+   "acme_cards_v3",
+   "p_v5",
+   "p_v4",
+   "revert structured reply format"
+  ]
+ ]
+}

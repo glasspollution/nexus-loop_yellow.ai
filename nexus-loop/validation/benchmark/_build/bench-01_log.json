@@ -1,0 +1,74 @@
+{
+ "corpus": "bench-01",
+ "ops": {
+  "B1": {
+   "removed": 1897,
+   "reassigned": 0,
+   "clones": 0
+  },
+  "N1": {
+   "targets": 438,
+   "hits": 83,
+   "flips": {
+    "handoff": 39,
+    "abandoned": 15
+   }
+  },
+  "N2": {
+   "targets": 660,
+   "hits": 67,
+   "flips": {
+    "handoff": 10,
+    "abandoned": 9
+   }
+  },
+  "N3": {
+   "targets": 3802,
+   "hits": 3802,
+   "flips": {
+    "abandoned": 32
+   }
+  },
+  "N4": {
+   "targets": 442,
+   "hits": 92,
+   "flips": {
+    "abandoned": 92
+   }
+  }
+ },
+ "duration_floor_mismatch_in_touched": 0,
+ "counts": {
+  "sessions": 78355,
+  "agent_steps": 862323,
+  "turns": 356118,
+  "csat_responses": 6732,
+  "config_changes": 19
+ },
+ "config_added": [
+  [
+   12,
+   "tool",
+   "get_loan_status",
+   "1.0.0",
+   "1.1.0",
+   "loan core API cutover"
+  ],
+  [
+   21,
+   "tool",
+   "get_loan_status",
+   "1.1.0",
+   "1.1.1",
+   "hotfix connection pool exhaustion"
+  ],
+  [
+   32,
+   "model",
+   "nw_returns_v3",
+   "sonnet-4.6",
+   "sonnet-5",
+   "planned model upgrade"
+  ]
+ ]
+}

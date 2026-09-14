@@ -1,0 +1,401 @@
+{
+ "team": "nexus-generic-scan",
+ "corpus": "A",
+ "system_notes": "Generic scan: one changepoint test over every metric x cohort series, overdispersion-adjusted; breadth, composition and explain-away tests; diagnosis by runtime layer. Not implemented: standard mining, replay verification, the A09 reason judge, human decisions. Ask-to-metric mapping is hand-authored. Refused breakdowns: session.custom_dims.customer_ref: 65326 distinct values exceeds its cardinality budget of 200 - refused, not truncated.",
+ "metrics": [
+  {
+   "id": "m_containment",
+   "name": "Containment rate",
+   "ask_id": "A01",
+   "grain": "session",
+   "fidelity": "measured",
+   "coverage": {
+    "value": 1.0,
+    "basis": "session_end and handoff_by_design are present on every session"
+   },
+   "calibration": null,
+   "plan": {
+    "source": "corpus/sessions.jsonl.gz",
+    "filter": "session_end = 'resolved' OR (session_end = 'handoff' AND handoff_by_design = true)",
+    "denominator": "all sessions in scope",
+    "breakdowns": [
+     "tenant",
+     "intent",
+     "channel"
+    ],
+    "refused_breakdowns": [
+     "session.custom_dims.customer_ref: 65326 distinct values exceeds its cardinality budget of 200 - refused, not truncated"
+    ]
+   }
+  },
+  {
+   "id": "m_quality",
+   "name": "Judged quality",
+   "ask_id": "A06",
+   "grain": "session",
+   "fidelity": "judged",
+   "coverage": {
+    "value": 1.0,
+    "basis": "every session carries a judged score"
+   },
+   "calibration": {
+    "agreement": 0.6706,
+    "n": 85,
+    "basis": "labels/rubric_scores.jsonl, compared only within a matching judge_version; agreement means |human - judge| <= 0.5. Not 1.00: the human labels disagree with each other."
+   },
+   "plan": {
+    "source": "corpus/sessions.jsonl.gz",
+    "filter": "quality_score, segmented by judge_version",
+    "denominator": "sessions within one judge_version",
+    "breakdowns": [
+     "tenant",
+     "intent"
+    ],
+    "refused_breakdowns": [
+     "session.custom_dims.customer_ref: 65326 distinct values exceeds its cardinality budget of 200 - refused, not truncated"
+    ]
+   }
+  },
+  {
+   "id": "m_abandon_reason",
+   "name": "Abandonment reason",
+   "ask_id": "A09",
+   "grain": "session",
+   "fidelity": "judged",
+   "coverage": {
+    "value": 1.0,
+    "basis": "abandonment is measured on every session; its reason is a judgment"
+   },
+   "calibration": null,
+   "plan": {
+    "source": "corpus/sessions.jsonl.gz JOIN corpus/turns.jsonl.gz",
+    "filter": "session_end = 'abandoned' (measured: 3769 sessions); reason = judge abandon_reason_v1 over the last user turns. Calibration not published: labels/ holds no human abandonment-reason labels, so agreement cannot be computed and none is claimed.",
+    "denominator": "abandoned sessions",
+    "breakdowns": [
+     "tenant",
+     "intent"
+    ],
+    "alternatives_offered": [
+     "session_end = 'abandoned' alone is MEASURED but answers how many gave up, not why"
+    ],
+    "refused_breakdowns": [
+     "session.custom_dims.customer_ref: 65326 distinct values exceeds its cardinality budget of 200 - refused, not truncated"
+    ]
+   }
+  },
+  {
+   "id": "m_tool_failure_acme_bank",
+   "name": "Tool failure rate - acme-bank",
+   "ask_id": "A04",
+   "grain": "step",
+   "fidelity": "measured",
+   "coverage": {
+    "value": 0.7083,
+    "basis": "share of this tenant's sessions whose agent kind emits tool_call steps; the catalog says v2_flow emit none. Computed from the corpus (catalog declares 0.72).",
+    "excluded": [
+     "agent_kind in (v2_flow)"
+    ]
+   },
+   "calibration": null,
+   "plan": {
+    "source": "corpus/agent_steps.jsonl.gz WHERE step_type = 'tool_call'",
+    "filter": "outcome != 'ok' AND tenant = 'acme-bank'",
+    "denominator": "tool_call steps of eligible sessions",
+    "breakdowns": [
+     "tool_name",
+     "error_class"
+    ],
+    "refused_breakdowns": [
+     "session.custom_dims.customer_ref: 65326 distinct values exceeds its cardinality budget of 200 - refused, not truncated"
+    ]
+   }
+  },
+  {
+   "id": "m_silent_tool_acme_bank",
+   "name": "Empty tool payload rate (derived) - acme-bank",
+   "ask_id": "A04",
+   "grain": "step",
+   "fidelity": "derived",
+   "coverage": {
+    "value": 0.7083,
+    "basis": "derived from result_field_count on outcome='ok' tool calls of this tenant; same coverage hole as its tool failure rate",
+    "excluded": [
+     "agent_kind in (v2_flow)"
+    ]
+   },
+   "calibration": null,
+   "plan": {
+    "source": "corpus/agent_steps.jsonl.gz WHERE step_type = 'tool_call' AND outcome = 'ok'",
+    "filter": "result_field_count = 0 AND tenant = 'acme-bank'",
+    "denominator": "outcome='ok' tool_call steps of eligible sessions",
+    "breakdowns": [
+     "tool_name"
+    ],
+    "refused_breakdowns": [
+     "session.custom_dims.customer_ref: 65326 distinct values exceeds its cardinality budget of 200 - refused, not truncated"
+    ]
+   }
+  },
+  {
+   "id": "m_tool_failure_northwind_retail",
+   "name": "Tool failure rate - northwind-retail",
+   "ask_id": "A04",
+   "grain": "step",
+   "fidelity": "measured",
+   "coverage": {
+    "value": 0.9306,
+    "basis": "share of this tenant's sessions whose agent kind emits tool_call steps; the catalog says v2_flow emit none. Computed from the corpus (catalog declares 0.93).",
+    "excluded": [
+     "agent_kind in (v2_flow)"
+    ]
+   },
+   "calibration": null,
+   "plan": {
+    "source": "corpus/agent_steps.jsonl.gz WHERE step_type = 'tool_call'",
+    "filter": "outcome != 'ok' AND tenant = 'northwind-retail'",
+    "denominator": "tool_call steps of eligible sessions",
+    "breakdowns": [
+     "tool_name",
+     "error_class"
+    ],
+    "refused_breakdowns": [
+     "session.custom_dims.customer_ref: 65326 distinct values exceeds its cardinality budget of 200 - refused, not truncated"
+    ]
+   }
+  },
+  {
+   "id": "m_silent_tool_northwind_retail",
+   "name": "Empty tool payload rate (derived) - northwind-retail",
+   "ask_id": "A04",
+   "grain": "step",
+   "fidelity": "derived",
+   "coverage": {
+    "value": 0.9306,
+    "basis": "derived from result_field_count on outcome='ok' tool calls of this tenant; same coverage hole as its tool failure rate",
+    "excluded": [
+     "agent_kind in (v2_flow)"
+    ]
+   },
+   "calibration": null,
+   "plan": {
+    "source": "corpus/agent_steps.jsonl.gz WHERE step_type = 'tool_call' AND outcome = 'ok'",
+    "filter": "result_field_count = 0 AND tenant = 'northwind-retail'",
+    "denominator": "outcome='ok' tool_call steps of eligible sessions",
+    "breakdowns": [
+     "tool_name"
+    ],
+    "refused_breakdowns": [
+     "session.custom_dims.customer_ref: 65326 distinct values exceeds its cardinality budget of 200 - refused, not truncated"
+    ]
+   }
+  }
+ ],
+ "standard": [],
+ "findings": [
+  {
+   "id": "f1",
+   "tenant": "acme-bank",
+   "cohort": {
+    "intent": "branch_locator"
+   },
+   "metric": "share:intent",
+   "window": {
+    "from_day": 22,
+    "to_day": 31
+   },
+   "is_regression": false,
+   "evidence": [
+    "intent=branch_locator share of acme-bank traffic: typical 0.135, during 0.436",
+    "tenant resolution moved +2.26% raw but -1.99% once re-weighted to the baseline intent mix",
+    "re-weighting by intent explains the move: raw +11.6%, mix-standardized -0.0%"
+   ],
+   "severity": "low",
+   "not_a_regression_because": "The share of traffic from intent=branch_locator moved from a typical 13.5% to 43.6% for days 22-31. That changes aggregates without anything getting better or worse: tenant resolution moved +2.26% raw but -1.99% once re-weighted to the baseline intent mix. Stratify by intent before reading any tenant-level trend over this window."
+  },
+  {
+   "id": "f2",
+   "tenant": "acme-bank",
+   "cohort": {},
+   "metric": "s.quality_score@v1",
+   "window": {
+    "from_day": 28,
+    "to_day": 55
+   },
+   "is_regression": false,
+   "evidence": [
+    "applies to every tenant",
+    "judge_version flips v1 -> v2 on day 28 for 8 agents across every tenant",
+    "acme-bank: judged quality 3.902 -> 3.304 (-0.598) if pooled naively across the boundary",
+    "northwind-retail: judged quality 3.866 -> 3.275 (-0.591) if pooled naively across the boundary"
+   ],
+   "severity": "low",
+   "not_a_regression_because": "judge_version - the version of the instrument that produces judged scores - changes on day 28 for every agent on every tenant at once. Judged metrics are comparable only within one version, so any trend across this day measures the rubric, not the agents. The scanner never compares judged values across it; the naive pooled trend is shown only to make the size of the trap visible."
+  },
+  {
+   "id": "f3",
+   "tenant": "northwind-retail",
+   "cohort": {
+    "intent": "order_status"
+   },
+   "metric": "share:intent",
+   "window": {
+    "from_day": 40,
+    "to_day": 51
+   },
+   "is_regression": false,
+   "evidence": [
+    "intent=order_status share of northwind-retail traffic: typical 0.281, during 0.000",
+    "tenant resolution moved -3.30% raw but -0.27% once re-weighted to the baseline intent mix",
+    "re-weighting by intent explains the move: raw +11.3%, mix-standardized +3.6%"
+   ],
+   "severity": "low",
+   "not_a_regression_because": "The share of traffic from intent=order_status moved from a typical 28.1% to 0.0% for days 40-51. That changes aggregates without anything getting better or worse: tenant resolution moved -3.30% raw but -0.27% once re-weighted to the baseline intent mix. Stratify by intent before reading any tenant-level trend over this window."
+  },
+  {
+   "id": "f4",
+   "tenant": "acme-bank",
+   "cohort": {
+    "intent": "premium_card_info"
+   },
+   "metric": "launch",
+   "window": {
+    "from_day": 45,
+    "to_day": 55
+   },
+   "is_regression": false,
+   "evidence": [
+    "first seen on day 45; 241 sessions; resolution 0.772 vs 0.802 for the rest of the tenant"
+   ],
+   "severity": "low",
+   "not_a_regression_because": "intent=premium_card_info did not exist before day 45, so it has no history to regress from; compared with its siblings over the same days, no mechanism or outcome metric fired."
+  },
+  {
+   "id": "f5",
+   "tenant": "acme-bank",
+   "cohort": {
+    "agent_id": "acme_main_v3"
+   },
+   "metric": "share:agent_id",
+   "window": {
+    "from_day": 46,
+    "to_day": 55
+   },
+   "is_regression": false,
+   "evidence": [
+    "agent_id=acme_main_v3 share of acme-bank traffic: typical 0.229, during 0.000",
+    "tenant resolution moved +0.32% raw but +0.69% once re-weighted to the baseline agent_id mix"
+   ],
+   "severity": "low",
+   "not_a_regression_because": "The share of traffic from agent_id=acme_main_v3 moved from a typical 22.9% to 0.0% for days 46-55. That changes aggregates without anything getting better or worse: tenant resolution moved +0.32% raw but +0.69% once re-weighted to the baseline agent_id mix. Stratify by agent_id before reading any tenant-level trend over this window."
+  }
+ ],
+ "diagnoses": [
+  {
+   "id": "d1",
+   "finding_id": "f1",
+   "cause_class": "traffic_mix",
+   "confidence": 0.85,
+   "attributed_change": null,
+   "evidence": [
+    "intent=branch_locator share of acme-bank traffic: typical 0.135, during 0.436",
+    "tenant resolution moved +2.26% raw but -1.99% once re-weighted to the baseline intent mix",
+    "re-weighting by intent explains the move: raw +11.6%, mix-standardized -0.0%"
+   ]
+  },
+  {
+   "id": "d2",
+   "finding_id": "f2",
+   "cause_class": "judge_change",
+   "confidence": 0.95,
+   "attributed_change": null,
+   "evidence": [
+    "judge_version flips v1 -> v2 on day 28 for 8 agents across every tenant",
+    "acme-bank: judged quality 3.902 -> 3.304 (-0.598) if pooled naively across the boundary",
+    "northwind-retail: judged quality 3.866 -> 3.275 (-0.591) if pooled naively across the boundary"
+   ]
+  },
+  {
+   "id": "d3",
+   "finding_id": "f3",
+   "cause_class": "traffic_mix",
+   "confidence": 0.85,
+   "attributed_change": null,
+   "evidence": [
+    "intent=order_status share of northwind-retail traffic: typical 0.281, during 0.000",
+    "tenant resolution moved -3.30% raw but -0.27% once re-weighted to the baseline intent mix",
+    "re-weighting by intent explains the move: raw +11.3%, mix-standardized +3.6%"
+   ]
+  },
+  {
+   "id": "d4",
+   "finding_id": "f4",
+   "cause_class": "traffic_mix",
+   "confidence": 0.7,
+   "attributed_change": null,
+   "evidence": [
+    "first seen on day 45; 241 sessions; resolution 0.772 vs 0.802 for the rest of the tenant"
+   ]
+  },
+  {
+   "id": "d5",
+   "finding_id": "f5",
+   "cause_class": "traffic_mix",
+   "confidence": 0.85,
+   "attributed_change": null,
+   "evidence": [
+    "agent_id=acme_main_v3 share of acme-bank traffic: typical 0.229, during 0.000",
+    "tenant resolution moved +0.32% raw but +0.69% once re-weighted to the baseline agent_id mix"
+   ]
+  }
+ ],
+ "prescriptions": [],
+ "verifications": [],
+ "gaps": [
+  {
+   "ask_id": "A03",
+   "verdict": "COVERAGE_TOO_LOW",
+   "why": "cost_per_session is computable only on 72% of acme-bank. cost is only emitted on llm_call steps, which v2_flow lacks Reported with its denominator stated rather than blended."
+  },
+  {
+   "ask_id": "A11",
+   "verdict": "NOT_MEASURABLE",
+   "why": "no failover mechanism exists in the runtime, so no failover event is ever emitted. There is no primary/secondary path to observe.",
+   "nearest_proxy": "llm_call.retry_count > 0",
+   "why_the_proxy_misleads": "but those are QUALITY retries at a different temperature, not failovers. Reporting them as failover would under-report and read as '0% failover', i.e. as good news.",
+   "required_event": {
+    "name": "failover",
+    "grain": "step",
+    "fields": [
+     "from_target",
+     "to_target",
+     "reason",
+     "recovered"
+    ],
+    "owner": "conversation-runtime"
+   }
+  },
+  {
+   "ask_id": "A09",
+   "verdict": "REQUIRES_NEW_JUDGE",
+   "why": "session_end='abandoned' is MEASURED. WHY the user abandoned is a judgment about meaning and needs a versioned judged signal with a published calibration. Inferring it from the end code is a Rule 1 violation dressed up as an aggregate.",
+   "nearest_proxy": "session_end = 'abandoned' (measured)",
+   "why_the_proxy_misleads": "it counts everyone who left, including users who got their answer and simply stopped replying; the question is why",
+   "required_event": {
+    "name": "abandonment_reason_judgment",
+    "grain": "session",
+    "fields": [
+     "session_id",
+     "judge_version",
+     "reason",
+     "confidence"
+    ],
+    "owner": "platform team",
+    "calibration_needs": "human abandonment-reason labels on a sample of abandoned sessions, per judge_version"
+   }
+  }
+ ],
+ "self_assessment": {
+  "cycles": 0,
+  "prescription_accuracy": {}
+ }
+}

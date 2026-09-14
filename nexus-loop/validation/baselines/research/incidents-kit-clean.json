@@ -1,0 +1,78 @@
+{
+ "incidents": [
+  {
+   "id": "i1",
+   "tenant": "acme-bank",
+   "cohort": {
+    "intent": "branch_locator"
+   },
+   "from_day": 22,
+   "to_day": 31,
+   "is_regression": false,
+   "cause_class": "traffic_mix",
+   "metrics": [
+    "share:intent"
+   ],
+   "kind": "mix_shift"
+  },
+  {
+   "id": "i2",
+   "tenant": "*",
+   "cohort": {},
+   "from_day": 28,
+   "to_day": 55,
+   "is_regression": false,
+   "cause_class": "judge_change",
+   "metrics": [
+    "s.quality_score@v1",
+    "s.quality_score@v2"
+   ],
+   "kind": "instrument_boundary"
+  },
+  {
+   "id": "i3",
+   "tenant": "northwind-retail",
+   "cohort": {
+    "intent": "order_status"
+   },
+   "from_day": 40,
+   "to_day": 51,
+   "is_regression": false,
+   "cause_class": "traffic_mix",
+   "metrics": [
+    "share:intent"
+   ],
+   "kind": "mix_shift"
+  },
+  {
+   "id": "i4",
+   "tenant": "acme-bank",
+   "cohort": {
+    "intent": "premium_card_info"
+   },
+   "from_day": 45,
+   "to_day": 55,
+   "is_regression": false,
+   "cause_class": "traffic_mix",
+   "metrics": [
+    "launch"
+   ],
+   "kind": "launch"
+  },
+  {
+   "id": "i5",
+   "tenant": "acme-bank",
+   "cohort": {
+    "agent_id": "acme_main_v3"
+   },
+   "from_day": 46,
+   "to_day": 55,
+   "is_regression": false,
+   "cause_class": "traffic_mix",
+   "metrics": [
+    "share:agent_id"
+   ],
+   "kind": "mix_shift"
+  }
+ ]
+}

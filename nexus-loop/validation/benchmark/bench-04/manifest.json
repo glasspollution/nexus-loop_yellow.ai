@@ -1,0 +1,43 @@
+{
+  "kit_version": "1.0.0",
+  "corpus_variant": "SEALED",
+  "generated_at": "2026-09-12T14:03:58Z",
+  "seed": 42,
+  "scale": 1.0,
+  "days": 56,
+  "epoch": "2026-06-01T00:00:00+00:00",
+  "tenants": [
+    "acme-bank",
+    "northwind-retail"
+  ],
+  "rows": {
+    "sessions": 77241,
+    "agent_steps": 849248,
+    "turns": 350804,
+    "config_changes": 22,
+    "csat_responses": 6603,
+    "outcome_labels": 400,
+    "rubric_scores": 96
+  },
+  "step_type_counts": {
+    "turn": 350804,
+    "llm_call": 354181,
+    "tool_call": 59324,
+    "handoff": 11620,
+    "kb_lookup": 69501,
+    "guardrail": 3818
+  },
+  "files": {
+    "corpus/sessions.jsonl.gz": "one row per conversation",
+    "corpus/agent_steps.jsonl.gz": "one row per execution step \u2014 the fact grain",
+    "corpus/turns.jsonl.gz": "transcript text",
+    "corpus/config_timeline.csv": "every config change, timestamped",
+    "corpus/feedback.csv": "sparse CSAT",
+    "catalog.json": "the semantic catalog \u2014 plan over this, not the raw schema",
+    "asks.md": "the eleven operator asks",
+    "labels/outcome_labels.jsonl": "human resolved / by-design labels",
+    "labels/rubric_scores.jsonl": "human 1-5 quality scores",
+    "corpus_sample/": "a whole-session slice (~5%) for fast iteration \u2014 same schema, same joins, noisier small cohorts"
+  },
+  "benchmark_corpus": "bench-04"
+}

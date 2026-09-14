@@ -1,0 +1,25 @@
+{
+ "corpora": [
+  {
+   "corpus": "bench-01",
+   "split": "dev",
+   "source": "variant A"
+  },
+  {
+   "corpus": "bench-02",
+   "split": "test",
+   "source": "variant A"
+  },
+  {
+   "corpus": "bench-03",
+   "split": "dev",
+   "source": "kit-s2"
+  },
+  {
+   "corpus": "bench-04",
+   "split": "test",
+   "source": "kit-s2"
+  }
+ ],
+ "usage": "python evaluate.py --bench-dir <bench>/bench-0N --incidents incidents.json [--json]; python evaluate_all.py --incidents-dir DIR --split dev|test|all"
+}

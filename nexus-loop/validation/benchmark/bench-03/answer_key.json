@@ -1,0 +1,298 @@
+{
+ "corpus": "bench-03",
+ "split": "dev",
+ "source": "kit-s2",
+ "seed": 3303,
+ "magnitude_tier_rule": "tier refers to the primary metric: subtle ~5-12% relative (or +2-5 pts on a small-base rate), medium ~15-35% relative (or +6-12 pts), large >=50% relative (or >=15 pts)",
+ "novel_faults": [
+  {
+   "id": "N1",
+   "type": "handoff_misfire",
+   "tenant": "acme-bank",
+   "cohort": {
+    "agent_id": "acme_lending_v3"
+   },
+   "onset_day": 26,
+   "duration_days": 11,
+   "shape": "step",
+   "magnitude_tier": "large",
+   "primary_metric": "unplanned handoff rate on acme_lending_v3",
+   "measured": {
+    "before": 0.0764,
+    "during": 0.3293,
+    "relative_change": 3.3077,
+    "abs_change": 0.2529,
+    "resolution_before": 0.8331,
+    "resolution_during": 0.5787,
+    "windows": {
+     "before": [
+      12,
+      25
+     ],
+     "during": [
+      26,
+      36
+     ]
+    }
+   },
+   "has_config_row": true,
+   "accepted_cause_classes": [
+    "routing.error"
+   ],
+   "description": "A routing threshold retune on acme_lending_v3 escalates ~30% of conversations that would have resolved to a human within the first 1-3 turns (handoff_by_design=false). Rolled back day 37."
+  },
+  {
+   "id": "N2",
+   "type": "tool_outage",
+   "tenant": "northwind-retail",
+   "cohort": {
+    "tool": "check_stock",
+    "intent": "product_availability"
+   },
+   "onset_day": 8,
+   "duration_days": 9,
+   "shape": "ramp",
+   "ramp_days": 6,
+   "magnitude_tier": "subtle",
+   "primary_metric": "tool error rate on check_stock",
+   "measured": {
+    "before": 0.0153,
+    "during": 0.0523,
+    "relative_change": 2.4062,
+    "abs_change": 0.0369,
+    "resolution_before": 0.8266,
+    "resolution_during": 0.8033,
+    "windows": {
+     "before": [
+      0,
+      7
+     ],
+     "during": [
+      8,
+      16
+     ]
+    },
+    "primary_at_full_ramp": 0.0511
+   },
+   "has_config_row": false,
+   "accepted_cause_classes": [
+    "tool.outage",
+    "unknown"
+   ],
+   "description": "Inventory service slowly degrades: check_stock 5xx/timeouts ramp up to ~+5.5pts over 6 days. No config marker."
+  },
+  {
+   "id": "N3",
+   "type": "model_provider_errors",
+   "tenant": "northwind-retail",
+   "cohort": {
+    "agent_id": "nw_orders_v3"
+   },
+   "onset_day": 48,
+   "duration_days": 8,
+   "shape": "step",
+   "magnitude_tier": "medium",
+   "primary_metric": "llm_call error rate on nw_orders_v3",
+   "measured": {
+    "before": 0.0036,
+    "during": 0.0872,
+    "relative_change": 23.4751,
+    "abs_change": 0.0837,
+    "resolution_before": 0.7716,
+    "resolution_during": 0.7226,
+    "windows": {
+     "before": [
+      34,
+      47
+     ],
+     "during": [
+      48,
+      55
+     ]
+    }
+   },
+   "has_config_row": true,
+   "accepted_cause_classes": [
+    "model.change"
+   ],
+   "description": "After a model upgrade on nw_orders_v3 the provider returns errors on ~9% of calls (each retried) and latency rises ~40%; some sessions give up."
+  },
+  {
+   "id": "N4",
+   "type": "tool_breaking_change_4xx",
+   "tenant": "acme-bank",
+   "cohort": {
+    "tool": "raise_dispute",
+    "intent": "txn_dispute"
+   },
+   "onset_day": 47,
+   "duration_days": 9,
+   "shape": "step",
+   "magnitude_tier": "large",
+   "primary_metric": "tool error rate on raise_dispute",
+   "measured": {
+    "before": 0.0279,
+    "during": 0.3597,
+    "relative_change": 11.9126,
+    "abs_change": 0.3318,
+    "resolution_before": 0.6568,
+    "resolution_during": 0.4907,
+    "windows": {
+     "before": [
+      33,
+      46
+     ],
+     "during": [
+      47,
+      55
+     ]
+    }
+   },
+   "has_config_row": true,
+   "accepted_cause_classes": [
+    "tool.contract_break",
+    "tool.outage"
+   ],
+   "description": "Dispute API v2 makes a field mandatory that the agent does not send: 40% of raise_dispute calls return declared HTTP 422 (upstream.client_4xx); disputes are not raised."
+  }
+ ],
+ "benign_events": [
+  {
+   "id": "B3",
+   "type": "channel_mix_shift",
+   "tenant": "northwind-retail",
+   "cohort": {
+    "channel": "app"
+   },
+   "onset_day": 22,
+   "duration_days": 9,
+   "description": "In-app order-tracking push campaign: app-channel traffic is 2.5x normal for 9 days. Added sessions behave exactly like normal app sessions of the same day.",
+   "measured": {
+    "before": 0.1171,
+    "during": 0.2424,
+    "channel_resolution_before": 0.793,
+    "channel_resolution_during": 0.809,
+    "channel_abandon_before": 0.0454,
+    "channel_abandon_during": 0.0416,
+    "metric": [
+     "channel_share",
+     "app"
+    ]
+   },
+   "correct_reading": "not a regression"
+  }
+ ],
+ "planted_faults": [
+  {
+   "id": "F1",
+   "kind": "regression",
+   "cause_class": "kb.gap",
+   "tenant": "acme-bank",
+   "cohort": {
+    "intent": "premium_card_info"
+   },
+   "onset_day": 24,
+   "duration_days": 10,
+   "signature": "new product line launches with no KB content; kb_lookup returns no confident hit; answers fall through to a generic reply",
+   "primary_effect": "cohort resolution_rate falls to ~0.3 against a tenant standard above 0.8 \u2014 exact figures in observed_effects.F1",
+   "aggregate_effect": "tenant containment moves ~2pt \u2014 invisible without cohorting",
+   "attributable_change": {
+    "kind": "kb",
+    "day": 24
+   },
+   "accepted_fix_classes": [
+    "kb.add",
+    "kb.synonym"
+   ],
+   "detection_window_days": [
+    24,
+    31
+   ]
+  },
+  {
+   "id": "F2",
+   "kind": "regression",
+   "cause_class": "tool.contract_break",
+   "tenant": "northwind-retail",
+   "cohort": {
+    "intent": "order_status",
+    "tool": "get_order_status"
+   },
+   "onset_day": 33,
+   "duration_days": 15,
+   "signature": "tool returns HTTP 200 with an empty payload on ~13% of calls; outcome is recorded 'ok' so every error-rate metric reads flat",
+   "primary_effect": "same-tool retry within session, then unresolved end",
+   "aggregate_effect": "tool_error_rate FLAT \u2014 the fault is invisible to the obvious metric and only shows in downstream behaviour",
+   "attributable_change": {
+    "kind": "tool",
+    "day": 33
+   },
+   "accepted_fix_classes": [
+    "tool.validate",
+    "tool.fallback"
+   ],
+   "detection_window_days": [
+    33,
+    40
+   ]
+  },
+  {
+   "id": "F3",
+   "kind": "regression",
+   "cause_class": "prompt.regression",
+   "tenant": "acme-bank",
+   "cohort": {
+    "agent_id": "acme_main_v3"
+   },
+   "onset_day": 10,
+   "duration_days": 11,
+   "signature": "prompt v4 makes the agent over-confirm; turns-to-resolve rises ~60% while resolution rate stays flat",
+   "primary_effect": "median turns ~4 -> ~6 (mean +58%); cost per session roughly +80%; resolution flat \u2014 exact figures in observed_effects.F3",
+   "aggregate_effect": "resolution FLAT \u2014 threshold alerting on outcome metrics misses this entirely; only a standard-relative measure sees it",
+   "attributable_change": {
+    "kind": "prompt",
+    "day": 10
+   },
+   "accepted_fix_classes": [
+    "prompt.edit",
+    "revert"
+   ],
+   "detection_window_days": [
+    10,
+    17
+   ]
+  }
+ ],
+ "planted_decoys": [
+  {
+   "id": "D1",
+   "kind": "traffic_mix_shift",
+   "tenant": "acme-bank",
+   "onset_day": 37,
+   "duration_days": 9,
+   "signature": "campaign drives 5.1x branch_locator volume (a trivially contained intent); AGGREGATE containment RISES while every cohort is flat or slightly worse",
+   "correct_reading": "not a quality event in either direction \u2014 stratify by intent",
+   "penalty_if_reported": "false_alarm"
+  },
+  {
+   "id": "D2",
+   "kind": "load_event",
+   "tenant": "northwind-retail",
+   "onset_day": 17,
+   "duration_days": 3,
+   "signature": "flash sale, 3.3x volume; p95 latency doubles and timeouts rise, then self-corrects. Quality is flat throughout",
+   "correct_reading": "a reliability event for the platform view, not a quality regression; it self-corrects inside the sustain window",
+   "penalty_if_reported": "false_alarm_if_called_quality_regression"
+  },
+  {
+   "id": "D3",
+   "kind": "judge_version_boundary",
+   "tenant": "*",
+   "onset_day": 34,
+   "duration_days": 22,
+   "signature": "quality rubric v1 -> v2 is stricter; judged scores drop ~0.6 across BOTH tenants at once. judge_version is stamped on every judged value, so the information needed to refuse the comparison is present in the data",
+   "correct_reading": "do not trend judged quality across the boundary; re-score or segment by judge_version",
+   "penalty_if_reported": "false_alarm"
+  }
+ ]
+}

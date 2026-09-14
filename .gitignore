@@ -1,0 +1,14 @@
+# Organiser-provided materials: obtain them from the TechQuest kit, do not redistribute
+kit/
+kit-*/
+tools/
+*.pdf
+
+# Generated / local
+__pycache__/
+*.pyc
+.pytest_cache/
+nexus-loop/.cache/
+nexus-loop/out/
+nexus-loop/validation/data/
+nexus-loop/validation/results/

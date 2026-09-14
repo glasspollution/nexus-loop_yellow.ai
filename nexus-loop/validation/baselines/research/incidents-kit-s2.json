@@ -1,0 +1,107 @@
+{
+ "incidents": [
+  {
+   "id": "i1",
+   "tenant": "acme-bank",
+   "cohort": {
+    "agent_id": "acme_main_v3"
+   },
+   "from_day": 8,
+   "to_day": 20,
+   "is_regression": true,
+   "cause_class": "prompt.regression",
+   "metrics": [
+    "s.cost_usd",
+    "s.duration_s",
+    "s.turns"
+   ],
+   "kind": "regression"
+  },
+  {
+   "id": "i2",
+   "tenant": "acme-bank",
+   "cohort": {
+    "intent": "premium_card_info"
+   },
+   "from_day": 23,
+   "to_day": 33,
+   "is_regression": true,
+   "cause_class": "kb.gap",
+   "metrics": [
+    "kb_lookup.miss",
+    "kb_lookup.top_score",
+    "s.handoff_unplanned",
+    "s.milestone_ratio",
+    "s.quality_score@v1"
+   ],
+   "kind": "regression"
+  },
+  {
+   "id": "i3",
+   "tenant": "northwind-retail",
+   "cohort": {
+    "tool": "get_order_status"
+   },
+   "from_day": 31,
+   "to_day": 47,
+   "is_regression": true,
+   "cause_class": "tool.contract_break",
+   "metrics": [
+    "s.handoff_unplanned",
+    "s.milestones_complete",
+    "s.resolved",
+    "tool_call.empty",
+    "tool_call.retry"
+   ],
+   "kind": "regression"
+  },
+  {
+   "id": "i4",
+   "tenant": "northwind-retail",
+   "cohort": {},
+   "from_day": 16,
+   "to_day": 19,
+   "is_regression": false,
+   "cause_class": "load",
+   "metrics": [
+    "kb_lookup.duration_ms",
+    "llm_call.duration_ms",
+    "llm_call.fail",
+    "llm_call.retry",
+    "s.tool_error_any",
+    "tool_call.duration_ms",
+    "tool_call.fail"
+   ],
+   "kind": "load"
+  },
+  {
+   "id": "i5",
+   "tenant": "*",
+   "cohort": {},
+   "from_day": 34,
+   "to_day": 55,
+   "is_regression": false,
+   "cause_class": "judge_change",
+   "metrics": [
+    "s.quality_score@v1",
+    "s.quality_score@v2"
+   ],
+   "kind": "instrument_boundary"
+  },
+  {
+   "id": "i6",
+   "tenant": "acme-bank",
+   "cohort": {
+    "intent": "branch_locator"
+   },
+   "from_day": 37,
+   "to_day": 45,
+   "is_regression": false,
+   "cause_class": "traffic_mix",
+   "metrics": [
+    "share:intent"
+   ],
+   "kind": "mix_shift"
+  }
+ ]
+}
