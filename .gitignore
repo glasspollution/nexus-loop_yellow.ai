@@ -12,3 +12,6 @@ nexus-loop/.cache/
 nexus-loop/out/
 nexus-loop/validation/data/
 nexus-loop/validation/results/
+
+# screen working output
+screen/*.log

@@ -50,6 +50,15 @@ def summarise(result, report_path, incidents_path, errs, problems, seconds):
         print("     ! " + line)
 
 
+def _rebuild_hash(rep):
+    """The build hash covers the whole report, so anything added after it is generated invalidates
+    it. Recompute over everything else, exactly as nexus/report.py does."""
+    import hashlib
+    rep.pop("report_build", None)
+    rep["report_build"] = "sha256:" + hashlib.sha256(
+        json.dumps(rep, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()[:16]
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--kit", required=True, help="kit directory (catalog.json, corpus/, labels/, asks.md)")
@@ -57,6 +66,13 @@ def main(argv=None):
     ap.add_argument("--team", default="nexus-loop", help="team name written into the report")
     ap.add_argument("--cache-dir", default=os.path.join(ROOT, ".cache"), help="loader cache directory")
     ap.add_argument("--no-cache", action="store_true", help="always re-read the corpus")
+    ap.add_argument("--replay", default=None, metavar="URL",
+                    help="replay endpoint, e.g. http://127.0.0.1:8719. Optional by design: without "
+                         "it the run never depends on a service being reachable. Costs one attempt "
+                         "per prescription from a shared budget of 40, and does not retry.")
+    ap.add_argument("--no-blunt-probe", action="store_true",
+                    help="skip the deliberate revert probe (one extra attempt) that records a "
+                         "fix which did not work")
     a = ap.parse_args(argv)
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -69,6 +85,18 @@ def main(argv=None):
     except FileNotFoundError as exc:
         print("error: %s" % exc, file=sys.stderr)
         return 2
+
+    if a.replay:
+        from nexus import replay as R
+        print("  verifying against replay endpoint %s ..." % a.replay)
+        vers = R.verify_all(result["counters"], result["report"], a.replay, a.team, a.kit,
+                            probe_blunt=not a.no_blunt_probe, log=print)
+        if vers:
+            result["report"]["verifications"] = vers
+            result["report"]["self_assessment"] = R.self_assessment(
+                vers, result["report"].get("prescriptions", []))
+            _rebuild_hash(result["report"])
+
     report_path, incidents_path = write_outputs(result, a.out)
     with open(report_path, encoding="utf-8") as fh:
         written = json.load(fh)             # validate exactly what was written to disk
