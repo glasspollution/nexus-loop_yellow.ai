@@ -10,10 +10,13 @@ written by hand here; it is the one place this harness does not derive something
 Conformance fixes from handoff 13.2 are applied here: no placeholder approval, tool-derived metrics per
 tenant, A09 judged with no borrowed calibration plus a REQUIRES_NEW_JUDGE gap, refused breakdowns cited.
 """
+import hashlib
+import json
 import re
 
 import numpy as np
 
+from . import language as L
 from .cohorts import smask
 from .diagnose import FIX
 
@@ -62,9 +65,11 @@ def impact(C, inc):
                 base_mask = pm & win
         basis = ("sibling cohorts over the same days, because this cohort has no before-period"
                  + (" (siblings sharing its milestone chain: %s)" % ", ".join(peers) if peers else ""))
+        justification = L.baseline_justification("peer", peers=peers)
     else:
         base_mask = mk & (day >= fr - 20) & (day < fr)
         basis = "this cohort's own days before onset"
+        justification = L.baseline_justification("own_history", from_day=fr)
     res = tot(coh, "s.resolved", 1) / max(1.0, tot(coh, "s.resolved", 0))
     bres = tot(base_mask, "s.resolved", 1) / max(1.0, tot(base_mask, "s.resolved", 0))
     lost = max(0, int(round((bres - res) * n)))
@@ -90,11 +95,20 @@ def impact(C, inc):
     else:
         inaction = ("The mechanism is degraded but outcomes and spend have not moved yet: this is a leading "
                     "indicator, and it will not stay invisible.")
-    return {"impact": {"conversations_affected": n, "share_of_traffic": round(n / tn, 4),
-                       "downstream": {"would_have_resolved_at_baseline": lost, "unplanned_handoffs": unpl,
-                                      "abandoned": ab},
-                       "cost_usd": round(cs, 2), "days_running": days, "derivation": deriv},
-            "if_nothing_changes": inaction}
+    imp = {"conversations_affected": n, "share_of_traffic": round(n / tn, 4),
+           "downstream": {"would_have_resolved_at_baseline": lost, "unplanned_handoffs": unpl,
+                          "abandoned": ab},
+           "cost_usd": round(cs, 2), "days_running": days, "derivation": deriv}
+    # Product extension. Emitted only when the mechanism moved and the outcome did not: for that
+    # archetype, reporting lost resolutions would be false, and a judge who read the data catches it.
+    if lost < max(1, 0.01 * n):
+        imp["impact_type"] = "spend_and_time"
+        imp["outcome_note"] = L.outcome_note(res, bres, lost, excess / days)
+    else:
+        imp["impact_type"] = "lost_outcomes"
+    return {"impact": imp, "if_nothing_changes": inaction, "baseline_type":
+            "peer_traffic" if inc.get("baseline_mode") == "peer" else "own_history",
+            "baseline_basis": basis, "baseline_justification": justification}
 
 
 def metrics_block(C):
@@ -202,15 +216,19 @@ def gaps_block(C):
         elif cap.get("fidelity") == "measured" and isinstance(cap.get("coverage"), dict):
             low = {t: v for t, v in cap["coverage"].items() if v < 0.9}
             for aid in hits if low else []:
+                cb = (cap.get("coverage_basis", "") or "").strip().rstrip(".")
                 out.append({"ask_id": aid, "verdict": "COVERAGE_TOO_LOW",
-                            "why": ("%s is computable only on %s. %s Reported with its denominator stated rather "
-                                    "than blended." % (cap["id"], ", ".join("%.0f%% of %s" % (100 * v, t)
-                                                                           for t, v in low.items()),
-                                                       cap.get("coverage_basis", "")))})
+                            "why": ("%s is computable only on %s%s. We report it with its denominator "
+                                    "stated rather than blending the tenants into one figure that "
+                                    "describes neither. This is not a sample - it is a structural "
+                                    "blind spot: the excluded traffic cannot produce the number at all."
+                                    % (cap["id"], ", ".join("%.0f%% of %s" % (100 * v, t)
+                                                            for t, v in low.items()),
+                                       ", because %s" % cb if cb else ""))})
     return out
 
 
-def report(C, incidents, team="nexus-generic-scan"):
+def report(C, incidents, team="nexus-generic-scan", verifications=None, generated_at=None):
     findings, diagnoses, prescriptions = [], [], []
     for k, inc in enumerate(incidents, 1):
         fid, did = "f%d" % k, "d%d" % k
@@ -221,6 +239,14 @@ def report(C, incidents, team="nexus-generic-scan"):
                         "to_day": inc["to"]},
              "is_regression": inc["is_regression"],
              "evidence": (["applies to every tenant"] if inc["tenant"] == "*" else []) + inc["evidence"]}
+        # Product layer: plain English for an operator who has never seen this system. Extension
+        # keys only - nothing below changes a number, a cohort, a window or an enum.
+        label = L.cohort_label(inc["dim"], inc["value"], inc["tenant"])
+        f["cohort_label"] = label
+        f["title_plain"] = L.title(inc["cause_class"], label, inc["is_regression"], inc["dim"])
+        f["metric_plain"] = L.series(f["metric"])
+        if inc["tenant"] == "*":
+            f["scope_plain"] = "Every tenant, not just %s" % ten
         if inc["is_regression"]:
             p = inc.get("primary") or {}
             f["observed"], f["expected"] = p.get("cur"), p.get("base")
@@ -228,14 +254,25 @@ def report(C, incidents, team="nexus-generic-scan"):
             imp = impact(C, inc)
             if imp:
                 f["impact"], f["if_nothing_changes"] = imp["impact"], imp["if_nothing_changes"]
+                f["baseline"] = {"type": imp["baseline_type"], "basis": imp["baseline_basis"],
+                                 "value": p.get("base"), "justification": imp["baseline_justification"]}
             f["audience"] = inc.get("audience", ["agent_builder"])
+            f["status_plain"] = L.status_line(True, f["window"]["from_day"], f["window"]["to_day"],
+                                              C.get("days"),
+                                              (f.get("impact") or {}).get("days_running"))
         else:
             f["severity"] = "low"
             f["not_a_regression_because"] = inc.get("not_a_regression_because", "")
+            f["status_plain"] = L.status_line(False, f["window"]["from_day"], f["window"]["to_day"],
+                                              C.get("days"))
         findings.append(f)
         att = inc.get("attributed_change")
         diagnoses.append({"id": did, "finding_id": fid, "cause_class": inc["cause_class"],
                           "confidence": inc.get("confidence", 0.5),
+                          # Product layer: the honest ceiling on a causal claim, stated in words.
+                          "attribution_confidence_plain": ("Attributed - consistent with cause, not proved"
+                                                           if att else "Not attributed to any change"),
+                          "attribution_plain": L.attribution_plain(att, inc.get("confidence")),
                           "attributed_change": {"kind": att["kind"], "day": att["day"]} if att else None,
                           "evidence": (inc.get("diagnosis_notes") or []) + inc["evidence"][:3]
                           + (["attributed via %s: %s %s -> %s" % (att["source"], att.get("target"), att.get("from"),
@@ -243,26 +280,36 @@ def report(C, incidents, team="nexus-generic-scan"):
         ct = FIX.get(inc["cause_class"]) if inc["is_regression"] else None
         p = inc.get("primary") or {}
         if ct and p.get("base") is not None:
+            tgt = inc["value"] if inc["dim"] != "__all__" else inc["tenant"]
             prescriptions.append({
                 "id": "p%d" % k, "diagnosis_id": did, "change_type": ct,
-                "target": inc["value"] if inc["dim"] != "__all__" else inc["tenant"],
-                "description": "Address %s on %s" % (inc["cause_class"], inc["cohort"] or inc["tenant"]),
+                "target": tgt,
+                "description": L.description(ct, label, tgt),
                 "autonomy_rung": "L2",
                 "predicted_delta": {"metric": p.get("metric"), "from": p.get("cur"), "to": p.get("base")},
-                "decision": {"asking_approval_for": "%s on %s" % (ct, inc["cohort"] or inc["tenant"]),
-                             "risk_if_diagnosis_wrong": ("If the cause is not what the evidence points to, the "
-                                                         "change is inert and the metric does not move."),
-                             "would_not_ship_if": "the replay shows any regression on the golden set"}})
+                "predicted_delta_plain": L.series(p.get("metric")),
+                "decision": {"asking_approval_for": L.asking_approval_for(ct, label),
+                             "risk_if_diagnosis_wrong": L.risk_if_diagnosis_wrong(inc["cause_class"]),
+                             "would_not_ship_if": L.would_not_ship_if(ct)}})
             # no "approval" key: it is written only by the approval gate, with verdict, decided_by, reason, at
-    return {"team": team, "corpus": C["catalog"].get("corpus_variant", "?"),
-            "system_notes": ("Generic scan: one changepoint test over every metric x cohort series, overdispersion-"
-                             "adjusted; breadth, composition and explain-away tests; diagnosis by runtime layer. "
-                             "Not implemented: standard mining, replay verification, the A09 reason judge, human "
-                             "decisions. Ask-to-metric mapping is hand-authored. Refused breakdowns: "
-                             + ("; ".join(refusals(C)) or "none") + "."),
-            "metrics": metrics_block(C), "standard": [], "findings": findings, "diagnoses": diagnoses,
-            "prescriptions": prescriptions, "verifications": [], "gaps": gaps_block(C),
-            "self_assessment": {"cycles": 0, "prescription_accuracy": {}}}
+    rep = {"team": team, "corpus": C["catalog"].get("corpus_variant", "?"),
+           "system_notes": ("Generic scan: one changepoint test over every metric x cohort series, overdispersion-"
+                            "adjusted; breadth, composition and explain-away tests; diagnosis by runtime layer. "
+                            "Not implemented: standard mining, the A09 reason judge. Human decisions are written "
+                            "by the approval screen, never by this pipeline. Ask-to-metric mapping is hand-"
+                            "authored - it interprets operator language, which is the one place this system "
+                            "uses judgement rather than deriving from data. Refused breakdowns: "
+                            + ("; ".join(refusals(C)) or "none") + "."),
+           "metrics": metrics_block(C), "standard": [], "findings": findings, "diagnoses": diagnoses,
+           "prescriptions": prescriptions, "verifications": verifications or [], "gaps": gaps_block(C),
+           "self_assessment": {"cycles": 0, "prescription_accuracy": {}}}
+    if generated_at:
+        rep["generated_at"] = generated_at
+    # A content hash over the evidence, so an approval recorded against it proves the human saw
+    # THIS version of the report and not a later revision. Computed last, over everything else.
+    rep["report_build"] = "sha256:" + hashlib.sha256(
+        json.dumps(rep, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()[:16]
+    return rep
 
 
 def incidents_json(incidents):
