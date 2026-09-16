@@ -15,3 +15,7 @@ nexus-loop/validation/results/
 
 # screen working output
 screen/*.log
+
+# browser test output
+corpus-*.png
+screen/*.log

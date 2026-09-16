@@ -129,9 +129,14 @@ def make_handler(store, page):
 
         def do_GET(self):
             path = self.path.split("?")[0]
-            if path in ("/", "/index.html"):
+            # Two surfaces: the brief is an overview that hands off, the desk is where decisions
+            # are made. The desk is the one the rubric scores, so it is what "/" serves.
+            served = {"/": page, "/index.html": page,
+                      "/brief": os.path.join(os.path.dirname(page), "brief.html"),
+                      "/brief.html": os.path.join(os.path.dirname(page), "brief.html")}
+            if path in served:
                 try:
-                    with open(page, "rb") as fh:
+                    with open(served[path], "rb") as fh:
                         return self._send(200, fh.read(), "text/html; charset=utf-8")
                 except OSError as e:
                     return self._send(500, {"error": "cannot read the page", "detail": str(e)})
@@ -147,7 +152,7 @@ def make_handler(store, page):
                 return self._send(200, {"ok": True, "report": store.path,
                                         "exists": os.path.exists(store.path)})
             return self._send(404, {"error": "not_found",
-                                    "endpoints": ["GET /", "GET /report", "POST /decision"]})
+                                    "endpoints": ["GET /", "GET /brief", "GET /report", "POST /decision"]})
 
         def do_POST(self):
             if self.path.split("?")[0] != "/decision":
@@ -182,7 +187,8 @@ def main(argv=None):
         print("No report at %s\nRun:  python nexus-loop/run.py --kit kit" % store.path,
               file=sys.stderr)
         return 2
-    print("Loop Desk  http://%s:%d" % (a.host, a.port))
+    print("Loop Desk  http://%s:%d          the decision queue" % (a.host, a.port))
+    print("           http://%s:%d/brief    the overview" % (a.host, a.port))
     print("  report   %s" % store.path)
     print("  decisions are written straight into that file, then re-validated against the schema.")
     ThreadingHTTPServer((a.host, a.port), make_handler(store, a.page)).serve_forever()

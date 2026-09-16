@@ -1,0 +1,795 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loop Desk — the brief</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 rx=%273%27 fill=%27%2310131A%27/%3E%3Crect x=%274%27 y=%274%27 width=%278%27 height=%278%27 rx=%271.5%27 fill=%27%23FFCE00%27/%3E%3C/svg%3E">
+<style>
+:root{
+  --y:#FFCE00; --y-2:#FFB800; --y-3:#FFE066; --y-dk:#E0B400;
+  --y-tint:#FFF8DB; --y-tint-2:#FFFCF0;
+  --ink:#0C0F15; --ink-2:#464D57; --ink-3:#737B86; --ink-4:#9AA2AD;
+  --bg:#FBFBF8; --surface:#FFFFFF; --rule:#E7E9ED; --rule-2:#F2F4F7;
+  --good:#1B6B41; --warn:#8A5A09; --bad:#A62F1C;
+  --grad-y:linear-gradient(135deg,#FFE066 0%,#FFCE00 45%,#FFB800 100%);
+  --grad-ink:linear-gradient(150deg,#1A1F29 0%,#0C0F15 55%,#14100A 100%);
+  --glass:rgba(255,255,255,.72);
+  --sh-1:0 1px 2px rgba(12,15,21,.04);
+  --sh-2:0 2px 6px rgba(12,15,21,.05),0 12px 34px rgba(12,15,21,.07);
+  --sh-3:0 18px 56px rgba(12,15,21,.16);
+  --glow:0 6px 28px rgba(255,184,0,.30);
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --sans:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --r:14px; --ease:cubic-bezier(.22,.8,.3,1);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 var(--sans);
+  -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+button{font-family:inherit}
+.wrap{max-width:1160px;margin:0 auto;padding:0 24px 100px;position:relative;z-index:1}
+
+.progress{position:fixed;top:0;left:0;height:2px;width:100%;z-index:60}
+.progress i{display:block;height:100%;width:0%;background:var(--grad-y);
+  box-shadow:0 0 12px rgba(255,184,0,.7);transition:width .1s linear}
+
+.nav{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:50;
+  width:min(1160px,calc(100% - 32px));display:flex;align-items:center;gap:16px;
+  padding:9px 12px 9px 16px;border-radius:999px;background:var(--glass);
+  -webkit-backdrop-filter:saturate(180%) blur(18px);backdrop-filter:saturate(180%) blur(18px);
+  border:1px solid rgba(255,255,255,.7);
+  box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 8px 30px rgba(12,15,21,.08);
+  transition:.3s var(--ease)}
+.nav.small{top:8px;padding:5px 10px 5px 12px;background:rgba(255,255,255,.88);
+  box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 10px 32px rgba(12,15,21,.13)}
+/* Over the dark hero, white glass turns to murky grey. The bar reads what is behind it. */
+.nav.onDark{background:rgba(18,22,30,.55);border-color:rgba(255,255,255,.10);
+  box-shadow:0 1px 0 rgba(255,255,255,.07) inset,0 10px 34px rgba(0,0,0,.34)}
+.nav.onDark .brand{color:#fff}
+.nav.onDark .meta{color:#9AA3B0}
+.nav.onDark .meta code{color:#7E8794}
+.nav.onDark a.cta2{background:var(--grad-y);color:var(--ink);
+  box-shadow:0 6px 22px rgba(255,184,0,.34)}
+.nav .brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:13.5px;
+  white-space:nowrap}
+.nav .mark{width:22px;height:22px;border-radius:7px;background:var(--grad-y);
+  box-shadow:var(--glow);position:relative;flex:none}
+.nav .mark:after{content:"";position:absolute;inset:5px;border-radius:50%;
+  border:2px solid rgba(12,15,21,.85);
+  -webkit-mask:radial-gradient(circle at 78% 22%,transparent 26%,#000 27%);
+  mask:radial-gradient(circle at 78% 22%,transparent 26%,#000 27%)}
+.nav .mark:before{content:"";position:absolute;top:4px;right:4px;width:5px;height:5px;
+  border-radius:50%;background:rgba(12,15,21,.85);z-index:1}
+.nav .meta{display:flex;gap:14px;align-items:center;font-size:12.5px;color:var(--ink-2)}
+.nav .meta code{font:11px var(--mono);color:var(--ink-3)}
+.nav .sp{flex:1}
+.nav a.cta2{background:var(--grad-ink);color:#fff;text-decoration:none;font-size:12.5px;
+  font-weight:650;padding:8px 18px;border-radius:999px;white-space:nowrap;
+  box-shadow:0 6px 20px rgba(12,15,21,.2);transition:.25s var(--ease)}
+.nav a.cta2:hover{transform:translateY(-1px);box-shadow:0 10px 28px rgba(12,15,21,.28)}
+@media (max-width:980px){ .nav .meta{display:none} }
+
+/* ---- hero: gradient mesh over near-black, brand light instead of brand paint ---- */
+.greet{position:relative;overflow:hidden;background:var(--grad-ink);color:#fff;
+  padding:132px 0 76px;margin-bottom:8px}
+.greet:before{content:"";position:absolute;inset:-40% -10% auto -10%;height:150%;
+  background:
+    radial-gradient(38% 46% at 16% 16%,rgba(255,206,0,.46),transparent 68%),
+    radial-gradient(34% 40% at 82% 4%,rgba(255,184,0,.30),transparent 70%),
+    radial-gradient(30% 36% at 60% 96%,rgba(255,224,102,.16),transparent 72%);
+  transform:translateY(var(--mesh,0px));transition:transform .6s var(--ease)}
+.greet:after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,206,0,.7),transparent)}
+.greet .in{max-width:1160px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+.eyebrow{display:inline-flex;align-items:center;gap:9px;font-size:11.5px;font-weight:650;
+  letter-spacing:.12em;text-transform:uppercase;color:#FFE066;margin-bottom:20px;
+  padding:7px 15px;border-radius:999px;background:rgba(255,206,0,.10);
+  box-shadow:inset 0 0 0 1px rgba(255,206,0,.28)}
+.eyebrow i{width:6px;height:6px;border-radius:50%;background:var(--y);
+  box-shadow:0 0 0 4px rgba(255,206,0,.18);animation:blip 2.6s var(--ease) infinite}
+@keyframes blip{0%,100%{box-shadow:0 0 0 3px rgba(255,206,0,.2)}
+  50%{box-shadow:0 0 0 8px rgba(255,206,0,.04)}}
+.greet h1{font-size:54px;line-height:1.08;margin:0 0 16px;font-weight:660;letter-spacing:-.035em;
+  max-width:19ch}
+.greet h1 em{font-style:normal;background:var(--grad-y);-webkit-background-clip:text;
+  background-clip:text;color:transparent}
+.greet p{font-size:18.5px;line-height:1.55;margin:0 0 30px;max-width:56ch;color:#B9C1CD}
+.greet .meta{font:11.5px var(--mono);color:#7E8794;display:flex;gap:18px;flex-wrap:wrap;
+  padding-top:22px;border-top:1px solid rgba(255,255,255,.08)}
+.greet .meta b{color:#FFE066;font-weight:500}
+
+h2{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3);
+  margin:52px 0 18px;font-weight:700;display:flex;align-items:center;gap:11px}
+h2:after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--rule),transparent)}
+
+.rv{opacity:0;transform:translateY(24px);
+  transition:opacity .75s var(--ease),transform .75s var(--ease)}
+.rv.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .rv{opacity:1;transform:none;transition:none}
+  .greet:before{transition:none}
+  *{animation-duration:.001ms!important;animation-iteration-count:1!important}
+}
+
+/* ---- bento ---- */
+.bento{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+.tile{position:relative;background:var(--surface);border-radius:var(--r);padding:22px 24px;
+  box-shadow:var(--sh-2);overflow:hidden;transition:.35s var(--ease)}
+.tile:hover{transform:translateY(-3px);box-shadow:0 4px 10px rgba(12,15,21,.06),
+  0 20px 48px rgba(12,15,21,.10)}
+.tile:before{content:"";position:absolute;left:24px;top:0;width:36px;height:3px;
+  border-radius:0 0 3px 3px;background:var(--grad-y)}
+.tile.wide{grid-column:span 2}
+.tile.tall{grid-row:span 2;grid-column:span 2}
+.tile .v{font-size:36px;line-height:1.06;font-weight:660;letter-spacing:-.035em}
+.tile .l{font-size:13px;color:var(--ink-2);margin-top:7px;line-height:1.42}
+.tile .c{font-size:11.5px;color:var(--ink-3);margin-top:12px;display:flex;gap:8px;
+  align-items:center;flex-wrap:wrap}
+.tile.accent{background:var(--grad-ink);color:#fff;box-shadow:0 18px 48px rgba(12,15,21,.24)}
+.tile.accent:after{content:"";position:absolute;inset:-30% -20% auto auto;width:70%;height:90%;
+  background:radial-gradient(circle at 70% 20%,rgba(255,206,0,.22),transparent 65%);
+  pointer-events:none}
+.tile.accent .l{color:#9AA3B0}
+.tile.accent .v{font-size:46px}
+.tile.cover{background:linear-gradient(140deg,var(--y-tint) 0%,#FFFDF6 60%,#fff 100%);
+  box-shadow:inset 0 0 0 1px rgba(255,206,0,.4),var(--sh-1)}
+.fid{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none;
+  border:1.5px solid currentColor}
+.fid.measured{background:currentColor}
+.fid.derived{background:linear-gradient(90deg,currentColor 50%,transparent 50%)}
+.caselist{margin-top:22px;position:relative;z-index:1}
+.caseitem{display:flex;gap:14px;align-items:flex-start;padding:13px 0;
+  border-top:1px solid rgba(255,255,255,.09);text-decoration:none;color:inherit;
+  transition:.25s var(--ease)}
+.caseitem:hover{padding-left:6px}
+.caseitem:hover .ct{color:var(--y-3)}
+.caseitem .cn{font:11px var(--mono);color:var(--y);padding-top:3px;min-width:20px;font-weight:700}
+.caseitem .ct{font-size:13.5px;font-weight:600;line-height:1.42;transition:.25s var(--ease)}
+.caseitem .cs{font-size:11.5px;color:#7E8794;margin-top:3px}
+
+.n{background:none;border:none;padding:0 1px;margin:0;font:inherit;color:inherit;cursor:pointer;
+  background-image:linear-gradient(var(--y),var(--y));background-size:100% 2px;
+  background-position:0 100%;background-repeat:no-repeat;transition:.25s var(--ease)}
+.n:hover{background-size:100% 100%;
+  background-image:linear-gradient(var(--y-tint),var(--y-tint));border-radius:5px}
+.tile.accent .n{background-image:linear-gradient(rgba(255,206,0,.6),rgba(255,206,0,.6))}
+.tile.accent .n:hover{background-image:linear-gradient(rgba(255,206,0,.16),rgba(255,206,0,.16))}
+.n:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--y);
+  outline-offset:3px;border-radius:5px}
+
+.chartcard{background:var(--surface);border-radius:var(--r);padding:28px 30px;
+  box-shadow:var(--sh-2)}
+.chartwrap{overflow-x:auto}
+.cap{font-size:13.5px;color:var(--ink-2);margin-top:18px;max-width:80ch;padding:13px 17px;
+  border-radius:0 10px 10px 0;position:relative;
+  background:linear-gradient(100deg,var(--y-tint-2),#fff)}
+.cap:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px;
+  background:var(--grad-y)}
+.legend{display:flex;gap:20px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);margin-top:16px}
+.legend span{display:flex;gap:7px;align-items:center}
+.sw{width:12px;height:12px;border-radius:4px;display:inline-block}
+
+.queue{background:var(--surface);border-radius:var(--r);padding:26px 28px;box-shadow:var(--sh-2)}
+.rule{font-size:13px;color:var(--ink-2);margin-bottom:18px}
+.qi{display:flex;gap:16px;align-items:center;padding:16px 18px;border-radius:12px;
+  margin-bottom:11px;background:linear-gradient(170deg,#FFFEFA,#fff 60%);
+  box-shadow:inset 0 0 0 1px var(--rule-2);cursor:grab;
+  transition:box-shadow .3s var(--ease),transform .3s var(--ease),background .3s var(--ease)}
+.qi:last-child{margin-bottom:0}
+.qi:hover{box-shadow:inset 0 0 0 1px rgba(255,206,0,.5),0 10px 26px rgba(12,15,21,.07);
+  transform:translateY(-2px)}
+.qi.drag{opacity:.35;transform:scale(.99)}
+.qi.over{box-shadow:inset 0 0 0 2px var(--y),0 12px 30px rgba(255,184,0,.18)}
+.qi .gr{color:var(--ink-4);font-size:14px;line-height:1;letter-spacing:1px;user-select:none}
+.qi .rk{width:30px;height:30px;border-radius:9px;background:var(--grad-y);color:var(--ink);
+  font-size:13.5px;font-weight:700;display:flex;align-items:center;justify-content:center;
+  flex:none;box-shadow:var(--glow)}
+.qi .bd{flex:1;min-width:0}
+.qi .t{font-size:14.5px;font-weight:650;line-height:1.38}
+.qi .s{font-size:12.5px;color:var(--ink-3);margin-top:4px}
+.qi .go{font-size:12.5px;font-weight:650;color:var(--ink);text-decoration:none;white-space:nowrap;
+  padding:8px 16px;border-radius:999px;background:var(--bg);
+  box-shadow:inset 0 0 0 1px var(--rule);transition:.25s var(--ease)}
+.qi .go:hover{background:var(--grad-y);box-shadow:var(--glow)}
+
+.cta{display:inline-flex;align-items:center;gap:10px;margin-top:30px;background:var(--grad-ink);
+  color:#fff;text-decoration:none;padding:16px 32px;border-radius:999px;font-size:15.5px;
+  font-weight:650;box-shadow:0 12px 34px rgba(12,15,21,.24);transition:.3s var(--ease)}
+.cta:hover{transform:translateY(-2px);box-shadow:0 18px 44px rgba(12,15,21,.32)}
+
+.pop{position:absolute;z-index:200;background:var(--surface);border-radius:14px;
+  box-shadow:var(--sh-3);padding:18px 20px;max-width:430px;font-size:13.5px}
+.pop:before{content:"";position:absolute;inset:0;border-radius:14px;padding:1px;
+  background:linear-gradient(160deg,var(--y),rgba(231,233,237,.9));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  mask-composite:exclude;pointer-events:none}
+.pop .t{font-weight:700;margin-bottom:9px}
+.pop dt{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);
+  font-weight:700;margin-top:13px}
+.pop dd{margin:4px 0 0}
+.pop .lock{margin-top:15px;padding-top:12px;border-top:1px solid var(--rule-2);font-size:12.5px;
+  color:var(--ink-3)}
+.frozen{margin-top:30px;padding:18px 22px;border-radius:var(--r);font-size:13px;
+  color:var(--ink-2);display:flex;gap:13px;
+  background:linear-gradient(120deg,var(--y-tint-2),#fff);
+  box-shadow:inset 0 0 0 1px var(--rule-2)}
+
+.boot{min-height:78vh;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:26px}
+.orb{position:relative;width:132px;height:132px}
+.orb span{position:absolute;inset:0;border-radius:50%;border:1.5px solid transparent;
+  border-top-color:var(--y);border-right-color:rgba(255,184,0,.4);
+  animation:spin 2.6s linear infinite}
+.orb span:nth-child(2){inset:14px;animation-duration:1.9s;animation-direction:reverse;
+  border-top-color:rgba(255,206,0,.55)}
+.orb span:nth-child(3){inset:28px;animation-duration:3.3s;border-top-color:rgba(12,15,21,.3)}
+.orb:before{content:"";position:absolute;inset:34px;border-radius:50%;background:var(--grad-y);
+  filter:blur(13px);opacity:.65;animation:breathe 2.8s var(--ease) infinite}
+.orb:after{content:"";position:absolute;inset:50px;border-radius:50%;background:var(--grad-y);
+  box-shadow:var(--glow)}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes breathe{0%,100%{opacity:.45;transform:scale(.9)}50%{opacity:.8;transform:scale(1.12)}}
+.bootlines{font:12.5px/2 var(--mono);color:var(--ink-3);text-align:center;height:26px;
+  overflow:hidden}
+.bootlines b{display:block;color:var(--ink-2);font-weight:500;animation:up .5s var(--ease)}
+@keyframes up{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
+
+@media (max-width:900px){
+  .bento{grid-template-columns:repeat(2,1fr)}
+  .tile.tall,.tile.wide{grid-column:span 2;grid-row:auto}
+  .greet{padding:110px 0 56px}
+  .greet h1{font-size:34px}
+  .greet p{font-size:16px}
+}
+</style>
+</head>
+<body>
+<div class="progress"><i id="prog"></i></div>
+<nav class="nav" id="nav"></nav>
+<div id="greet"></div>
+<div class="wrap" id="app">
+  <div class="boot">
+    <div class="orb"><span></span><span></span><span></span></div>
+    <div class="bootlines"><b id="bootline">Reading the deployment&rsquo;s own logs&hellip;</b></div>
+  </div>
+</div>
+<div id="overlay"></div>
+<script>
+/* The Brief — a calm overview that hands off to the decision queue.
+ *
+ * Deliberately NOT a dashboard: no filters, no search, no sort controls, no drill-down. The
+ * system already did the analysis. Everything here is read from loop-report.json; there is not a
+ * day number, tenant, cohort or count written into this file.
+ */
+'use strict';
+var R = null;
+var $ = function (s) { return document.querySelector(s); };
+var el = function (t, c, x) { var e = document.createElement(t); if (c) e.className = c;
+  if (x != null) e.textContent = x; return e; };
+
+function fmtInt(n) { return n == null ? '--' : Number(n).toLocaleString('en-GB'); }
+function fmtPct(v, dp) { return v == null ? '--' : (v * 100).toFixed(dp == null ? 0 : dp) + '%'; }
+function fmtUsd(v) { return v == null ? '--' : '$' + (v >= 100 ? Math.round(v).toLocaleString('en-GB') : v.toFixed(2)); }
+
+/* ---- the numeral popover: identical contract to the decision screen --------------------- */
+function num(text, info) {
+  var b = el('button', 'n', text);
+  b.type = 'button';
+  b.addEventListener('click', function (e) { e.stopPropagation(); showPop(b, info); });
+  return b;
+}
+function closePop() { var p = document.querySelector('.pop'); if (p) p.remove(); }
+function showPop(anchor, info) {
+  closePop();
+  var p = el('div', 'pop');
+  p.appendChild(el('div', 't', info.title || 'This number'));
+  var dl = el('dl');
+  function row(k, v) { if (!v) return; dl.appendChild(el('dt', null, k)); dl.appendChild(el('dd', null, v)); }
+  var FID = { measured: 'Measured — counted directly in the logs. We know this happened.',
+              derived: 'Derived — calculated from things we counted. No opinion involved.',
+              judged: 'Judged — a model read the conversation and formed an opinion.' };
+  row('What it is', info.definition);
+  row('How we know it', FID[info.fidelity] || info.fidelity);
+  if (info.coverage != null) row('Coverage', fmtPct(info.coverage) + ' of this tenant’s conversations. ' + (info.coverageBasis || ''));
+  row('How it was computed', info.derivation);
+  p.appendChild(dl);
+  p.appendChild(el('div', 'lock', '🔒 Definition frozen — v1.0. This system proposes changes to the agent, never to the yardstick.'));
+  document.body.appendChild(p);
+  var r = anchor.getBoundingClientRect();
+  var top = r.bottom + window.scrollY + 8;
+  var left = Math.min(r.left + window.scrollX, window.scrollX + window.innerWidth - p.offsetWidth - 16);
+  if (top + p.offsetHeight > window.scrollY + window.innerHeight) top = Math.max(window.scrollY + 8, r.top + window.scrollY - p.offsetHeight - 8);
+  p.style.top = top + 'px'; p.style.left = Math.max(8, left) + 'px';
+  setTimeout(function () { document.addEventListener('click', closePop, { once: true }); }, 0);
+}
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closePop(); });
+</script>
+<script>
+
+/* ---------- scroll behaviour --------------------------------------------------------------- */
+var REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+var FX = (function () {
+  var raf = 0;
+  function onScroll() {
+    if (raf) return;
+    raf = requestAnimationFrame(function () {
+      raf = 0;
+      var y = window.scrollY || 0;
+      var h = Math.max(1, document.body.scrollHeight - window.innerHeight);
+      var bar = document.getElementById('prog');
+      if (bar) bar.style.width = Math.min(100, (y / h) * 100) + '%';
+      var nav = document.getElementById('nav');
+      if (nav) {
+        nav.classList.toggle('small', y > 40);
+        var hero = document.querySelector('.greet');
+        var h = hero ? hero.offsetHeight : 0;
+        nav.classList.toggle('onDark', y < Math.max(0, h - 78));
+      }
+      if (!REDUCED) document.body.style.setProperty('--mesh', (y * 0.22) + 'px');
+    });
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  var io = 'IntersectionObserver' in window ? new IntersectionObserver(function (es) {
+    es.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      e.target.classList.add('in');
+      io.unobserve(e.target);
+      countUp(e.target);
+      drawIn(e.target);
+    });
+  }, { rootMargin: '0px 0px -8% 0px', threshold: .08 }) : null;
+
+  /* the lane bars and the area draw themselves in once, the first time they are seen */
+  function drawIn(root) {
+    [].forEach.call(root.querySelectorAll('[data-draw]'), function (n) {
+      var len = n.getAttribute('data-draw');
+      n.style.transition = 'none';
+      if (n.tagName === 'rect') {
+        n.style.transform = 'scaleX(0)';
+        n.style.transformOrigin = n.getAttribute('x') + 'px 0';
+        requestAnimationFrame(function () {
+          n.style.transition = 'transform .9s cubic-bezier(.22,.8,.3,1) ' + (len * 60) + 'ms';
+          n.style.transform = 'scaleX(1)';
+        });
+      }
+    });
+  }
+  function countUp(root) {
+    if (REDUCED) return;
+    [].forEach.call(root.querySelectorAll('[data-count]'), function (n) {
+      var final = n.textContent, m = final.match(/-?[\d,.]+/);
+      if (!m) return;
+      var target = parseFloat(m[0].replace(/,/g, ''));
+      if (!isFinite(target) || target === 0) return;
+      var dp = (m[0].split('.')[1] || '').length;
+      var t0 = performance.now(), dur = 900;
+      (function tick(now) {
+        var k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3), v = target * e;
+        n.textContent = final.replace(m[0],
+          dp ? v.toFixed(dp) : Math.round(v).toLocaleString('en-GB'));
+        if (k < 1) requestAnimationFrame(tick); else n.textContent = final;
+      })(t0);
+    });
+  }
+  return { observe: function (root) {
+    [].forEach.call((root || document).querySelectorAll('.rv'), function (n) {
+      if (io) io.observe(n); else { n.classList.add('in'); countUp(n); drawIn(n); }
+    });
+    onScroll();
+  } };
+})();
+
+var BOOT_LINES = [
+  'Reading the deployment\u2019s own logs\u2026',
+  'Counting every execution step\u2026',
+  'Testing every metric against every slice of traffic\u2026',
+  'Ruling out the things that only look like problems\u2026',
+  'Checking what cannot be measured at all\u2026'
+];
+var stopBoot = (function () {
+  var i = 0;
+  var t = setInterval(function () {
+    i = (i + 1) % BOOT_LINES.length;
+    var n = document.getElementById('bootline');
+    if (!n) return clearInterval(t);
+    n.style.animation = 'none'; n.textContent = BOOT_LINES[i];
+    void n.offsetWidth; n.style.animation = '';
+  }, 1400);
+  return function () { clearInterval(t); };
+})();
+
+/* ---- render ----------------------------------------------------------------------------- */
+function regs() { return (R.findings || []).filter(function (f) { return f.is_regression; }); }
+function dismissed() { return (R.findings || []).filter(function (f) { return !f.is_regression; }); }
+function sum(list, fn) { return list.reduce(function (a, f) { return a + (fn(f) || 0); }, 0); }
+
+function renderSysbar() {
+  var n = $('#nav'); n.innerHTML = '';
+  var brand = el('div', 'brand');
+  brand.appendChild(el('span', 'mark'));
+  brand.appendChild(el('span', null, 'Loop Desk'));
+  n.appendChild(brand);
+  var meta = el('div', 'meta');
+  meta.appendChild(el('span', null, 'corpus ' + (R.corpus || '?')));
+  if (R.report_build) {
+    var c = el('code', null, String(R.report_build).replace('sha256:', '').slice(0, 10));
+    c.title = R.report_build; meta.appendChild(c);
+  }
+  n.appendChild(meta);
+  n.appendChild(el('span', 'sp'));
+  var a2 = el('a', 'cta2', 'Open the queue \u2192'); a2.href = '/';
+  n.appendChild(a2);
+}
+
+function renderGreet() {
+  var g = $('#greet'); g.innerHTML = '';
+  var band = el('div', 'greet'), inn = el('div', 'in');
+  var rs = regs(), n = rs.length;
+  var hr = new Date().getHours();
+  var part = hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening';
+
+  var eb = el('div', 'eyebrow');
+  eb.appendChild(el('i'));
+  eb.appendChild(document.createTextNode('Overnight run complete'));
+  inn.appendChild(eb);
+
+  var h1 = el('h1');
+  h1.appendChild(document.createTextNode(part + ', Shekhar. '));
+  var em = el('em');
+  em.textContent = n === 0 ? 'Nothing needs you.'
+    : (n === 1 ? 'One thing needs you.' : n + ' things need you.');
+  h1.appendChild(em);
+  inn.appendChild(h1);
+
+  inn.appendChild(el('p', null, n === 0
+    ? 'Eight weeks of your agent\u2019s logs, read end to end. Nothing in this deployment needs a decision \u2014 and what was examined and dismissed is on the record.'
+    : 'Eight weeks of your agent\u2019s logs, read end to end. Each one below is investigated, tested against recorded traffic, and waiting on your signature \u2014 not a chart for you to interpret.'));
+
+  var meta = el('div', 'meta');
+  function m(label, value) {
+    var sp = el('span');
+    sp.appendChild(document.createTextNode(label + ' '));
+    sp.appendChild(el('b', null, value));
+    meta.appendChild(sp);
+  }
+  m('team', R.team || 'nexus-loop');
+  m('corpus', R.corpus || '?');
+  if (R.report_build) m('build', String(R.report_build).replace('sha256:', '').slice(0, 12));
+  m('schema', 'valid \u2713');
+  inn.appendChild(meta);
+  band.appendChild(inn); g.appendChild(band);
+}
+
+function renderBento() {
+  var app = $('#app');
+  app.appendChild(el('h2', null, 'While you were away'));
+  var rs = regs(), ds = dismissed();
+  var conv = sum(rs, function (f) { return (f.impact || {}).conversations_affected; });
+  var lost = sum(rs, function (f) { return ((f.impact || {}).downstream || {}).would_have_resolved_at_baseline; });
+  var hand = sum(rs, function (f) { return ((f.impact || {}).downstream || {}).unplanned_handoffs; });
+  var cost = sum(rs, function (f) { return (f.impact || {}).cost_usd; });
+  var b = el('div', 'bento');
+
+  /* the one large tile: what actually needs a person */
+  var big = el('div', 'tile tall accent');
+  var bv = el('div', 'v');
+  var bn = el('span', null, String((R.prescriptions || []).length));
+  bn.setAttribute('data-count', '1');
+  bv.appendChild(bn);
+  big.appendChild(bv);
+  big.appendChild(el('div', 'l', (R.prescriptions || []).length === 1
+    ? 'decision waiting for you' : 'decisions waiting for you'));
+  var cl = el('div', 'caselist');
+  rs.forEach(function (f, i) {
+    var a = el('a', 'caseitem'); a.href = '/?f=' + f.id;
+    a.appendChild(el('div', 'cn', String(i + 1).padStart(2, '0')));
+    var bd = el('div');
+    bd.appendChild(el('div', 'ct', f.title_plain || f.id));
+    bd.appendChild(el('div', 'cs', f.tenant + ' · ' + (f.status_plain || '')));
+    a.appendChild(bd);
+    cl.appendChild(a);
+  });
+  if (!rs.length) cl.appendChild(el('div', 'cs', 'Nothing in this deployment needs a decision.'));
+  big.appendChild(cl);
+  b.appendChild(big);
+
+  function tile(cls, value, label, caption, info, fid) {
+    var t = el('div', 'tile' + (cls ? ' ' + cls : ''));
+    var v = el('div', 'v');
+    if (info) { var nb = num(value, info); nb.setAttribute('data-count', '1'); v.appendChild(nb); }
+    else { var sp = el('span', null, value); sp.setAttribute('data-count', '1'); v.appendChild(sp); }
+    t.appendChild(v);
+    t.appendChild(el('div', 'l', label));
+    if (caption) {
+      var c = el('div', 'c');
+      if (fid) c.appendChild(el('i', 'fid ' + fid));
+      c.appendChild(document.createTextNode(caption));
+      t.appendChild(c);
+    }
+    b.appendChild(t);
+    return t;
+  }
+  tile('', fmtInt(conv), 'conversations affected', 'Measured · covers 100%', {
+    title: 'Conversations affected', definition: 'Conversations inside the affected cohorts across every open case.',
+    fidelity: 'measured', coverage: 1, coverageBasis: 'Every session is counted.',
+    derivation: 'Sum of impact.conversations_affected over all open cases.' }, 'measured');
+  tile('', fmtInt(lost), 'didn’t resolve that should have', 'Derived', {
+    title: 'Conversations that should have resolved', definition: 'Conversations that would have resolved at each case’s baseline rate and did not.',
+    fidelity: 'derived', coverage: 1, coverageBasis: 'Resolution is recorded on every session.',
+    derivation: 'Sum of impact.downstream.would_have_resolved_at_baseline. Derived from two rates, so approximate.' }, 'derived');
+  tile('', fmtInt(hand), 'handed to a human nobody staffed', 'Measured', {
+    title: 'Unplanned handoffs', definition: 'Conversations handed to a human where handoff_by_design is false.',
+    fidelity: 'measured', coverage: 1, coverageBasis: 'Recorded on every session.',
+    derivation: 'Sum of impact.downstream.unplanned_handoffs.' }, 'measured');
+  tile('', fmtUsd(cost), 'spent on these conversations', 'Measured · coverage-limited', {
+    title: 'Spend', definition: 'Model spend across the affected cohorts. Computed on tool-eligible traffic only.',
+    fidelity: 'measured', coverage: null,
+    derivation: 'Sum of impact.cost_usd. See each case for its tenant coverage.' }, 'measured');
+  tile('', String(ds.length), 'lookalikes examined and dismissed',
+       'each one written off in writing');
+  tile('', String((R.gaps || []).length), 'questions we refused to answer',
+       'each names the event that would fix it');
+
+  /* coverage gets its own visual treatment - it is the number we say out loud */
+  var cov = R.coverage_measured || {};
+  var ct = el('div', 'tile wide cover');
+  var cv = el('div', 'v');
+  var keys = Object.keys(cov);
+  keys.forEach(function (t, i) {
+    if (i) cv.appendChild(document.createTextNode('  ·  '));
+    cv.appendChild(num(fmtPct(cov[t].tool_call), {
+      title: 'Tool-metric coverage — ' + t,
+      definition: 'The share of this tenant’s conversations served by an agent that emits tool_call steps at all.',
+      fidelity: 'measured', coverage: cov[t].tool_call,
+      coverageBasis: 'Measured from the corpus.',
+      derivation: 'Sessions whose agent emits tool_call steps, over all of this tenant’s sessions.' }));
+    var sm = el('span'); sm.style.fontSize = '13px'; sm.style.fontWeight = '500';
+    sm.style.color = 'var(--ink-2)'; sm.style.marginLeft = '7px';
+    sm.style.letterSpacing = '0'; sm.textContent = t;
+    cv.appendChild(sm);
+  });
+  ct.appendChild(cv);
+  ct.appendChild(el('div', 'l', 'coverage on tool metrics'));
+  ct.appendChild(el('div', 'c', 'Stated per tenant, never blended — one figure would describe neither deployment.'));
+  b.appendChild(ct);
+  app.appendChild(b);
+}
+
+/* ---- the one chart in the product -------------------------------------------------------- */
+/* Lanes, not stacked bands. Three overlapping translucent windows compound into a dark patch that
+ * reads as "worse here", which is not what the data says - and their labels collide. One lane per
+ * episode says when each one ran, at a glance, with nothing overlapping and nothing implied. */
+function renderChart() {
+  var app = $('#app');
+  app.appendChild(el('h2', null, 'Eight weeks, and when things went wrong'));
+  var card = el('div', 'chartcard');
+
+  var all = (R.findings || []).slice().sort(function (a, b) {
+    return a.window.from_day - b.window.from_day; });
+  var days = 1;
+  all.forEach(function (f) { days = Math.max(days, f.window.to_day + 1); });
+
+  var W = 1080, GUT = 208, PADR = 18, LANE = 30, AX = 26, AREA = 62, TOP = 10;
+  var iw = W - GUT - PADR;
+  var H = TOP + all.length * LANE + AX + AREA + 24;
+  var x = function (d) { return GUT + (d / (days - 1)) * iw; };
+
+  var NS = 'http://www.w3.org/2000/svg';
+  var svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  svg.setAttribute('width', '100%');
+  svg.setAttribute('style', 'min-width:820px;display:block');
+  function mk(t, a, txt) {
+    var e = document.createElementNS(NS, t);
+    for (var k in a) e.setAttribute(k, a[k]);
+    if (txt != null) e.textContent = txt;
+    return e;
+  }
+
+  /* gradients live in defs so the fills are real gradients, not flat approximations of them */
+  var defs = mk('defs');
+  var lg = mk('linearGradient', { id: 'gLane', x1: '0', y1: '0', x2: '1', y2: '0' });
+  lg.appendChild(mk('stop', { offset: '0', 'stop-color': '#FFE066' }));
+  lg.appendChild(mk('stop', { offset: '.5', 'stop-color': '#FFCE00' }));
+  lg.appendChild(mk('stop', { offset: '1', 'stop-color': '#FFB800' }));
+  defs.appendChild(lg);
+  var ag = mk('linearGradient', { id: 'gArea', x1: '0', y1: '0', x2: '0', y2: '1' });
+  ag.appendChild(mk('stop', { offset: '0', 'stop-color': '#FFB800', 'stop-opacity': '.42' }));
+  ag.appendChild(mk('stop', { offset: '.55', 'stop-color': '#FFCE00', 'stop-opacity': '.16' }));
+  ag.appendChild(mk('stop', { offset: '1', 'stop-color': '#FFCE00', 'stop-opacity': '0' }));
+  defs.appendChild(ag);
+  var sg = mk('linearGradient', { id: 'gStroke', x1: '0', y1: '0', x2: '1', y2: '0' });
+  sg.appendChild(mk('stop', { offset: '0', 'stop-color': '#0C0F15' }));
+  sg.appendChild(mk('stop', { offset: '1', 'stop-color': '#7A5B00' }));
+  defs.appendChild(sg);
+  svg.appendChild(defs);
+
+  /* week gridlines behind everything */
+  for (var g = 0; g < days; g += 7) {
+    svg.appendChild(mk('line', { x1: x(g), y1: TOP, x2: x(g), y2: TOP + all.length * LANE,
+      stroke: '#EEF0F3' }));
+  }
+
+  all.forEach(function (f, i) {
+    var yy = TOP + i * LANE, cy = yy + LANE / 2;
+    var real = f.is_regression;
+    /* the lane track */
+    svg.appendChild(mk('line', { x1: GUT, y1: cy, x2: W - PADR, y2: cy, stroke: '#F1F3F6',
+      'stroke-width': '1' }));
+    var x0 = x(f.window.from_day), x1 = x(f.window.to_day);
+    var w = Math.max(3, x1 - x0);
+    if (real) {
+      var barEl = mk('rect', { x: x0, y: cy - 8, width: w, height: 16, rx: 8,
+        fill: 'url(#gLane)' });
+      barEl.setAttribute('data-draw', String(i));
+      svg.appendChild(barEl);
+    } else {
+      svg.appendChild(mk('rect', { x: x0, y: cy - 6, width: w, height: 12, rx: 3,
+        fill: '#F4F6F8', stroke: '#DCE1E7', 'stroke-dasharray': '3 3' }));
+    }
+    /* label in the gutter - no collisions, because each has its own row */
+    var lab = (f.cohort_label || f.id);
+    if (lab.length > 30) lab = lab.slice(0, 29) + '\u2026';
+    svg.appendChild(mk('text', { x: GUT - 12, y: cy + 4, 'font-size': '12.5',
+      fill: real ? '#10131A' : '#767E88', 'text-anchor': 'end',
+      'font-weight': real ? '600' : '400' }, lab));
+    /* the verdict, right of the gutter edge, so a dismissal never reads as a problem */
+    svg.appendChild(mk('text', { x: GUT - 12, y: cy + 17, 'font-size': '10.5',
+      fill: '#9AA2AB', 'text-anchor': 'end' },
+      real ? 'days ' + f.window.from_day + '\u2013' + f.window.to_day : 'examined, dismissed'));
+    /* how long it ran, at the end of the bar */
+    if (real) {
+      var d = (f.impact || {}).days_running;
+      if (d) {
+        /* a bar that runs to the end of the corpus leaves no room outside it, so the duration
+           moves inside rather than being clipped at the edge */
+        var outside = x1 + 52 < W - PADR;
+        svg.appendChild(mk('text', {
+          x: outside ? x1 + 8 : x1 - 8, y: cy + 4, 'font-size': '11.5',
+          fill: outside ? '#7A5B00' : '#4A3200',
+          'text-anchor': outside ? 'start' : 'end',
+          'font-weight': '600' }, d + ' days'));
+      }
+    }
+  });
+
+  /* day axis */
+  var ay = TOP + all.length * LANE + 16;
+  svg.appendChild(mk('line', { x1: GUT, y1: ay - 8, x2: W - PADR, y2: ay - 8, stroke: '#E6E8EC' }));
+  for (var dd = 0; dd < days; dd += 7) {
+    svg.appendChild(mk('text', { x: x(dd), y: ay + 6, 'font-size': '11', fill: '#767E88',
+      'text-anchor': 'middle' }, 'day ' + dd));
+  }
+
+  /* a small area strip beneath: conversations affected per day, from the report */
+  var series = new Array(days).fill(0);
+  all.filter(function (f) { return f.is_regression; }).forEach(function (f) {
+    var n = (f.impact || {}).conversations_affected || 0;
+    var span = f.window.to_day - f.window.from_day + 1;
+    for (var d2 = f.window.from_day; d2 <= f.window.to_day; d2++) series[d2] += n / span;
+  });
+  var mx = Math.max.apply(null, series) || 1;
+  var ay0 = ay + 20, ah = AREA - 24;
+  var yv = function (v) { return ay0 + ah - (v / mx) * ah; };
+  var path = 'M' + x(0) + ',' + yv(series[0]);
+  for (var i2 = 1; i2 < days; i2++) path += 'L' + x(i2) + ',' + yv(series[i2]);
+  svg.appendChild(mk('path', { d: path + 'L' + x(days - 1) + ',' + (ay0 + ah) + 'L' + x(0) + ','
+    + (ay0 + ah) + 'Z', fill: 'url(#gArea)' }));
+  svg.appendChild(mk('path', { d: path, fill: 'none', stroke: 'url(#gStroke)',
+    'stroke-width': '2', 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+  svg.appendChild(mk('text', { x: GUT - 12, y: ay0 + 12, 'font-size': '11.5', fill: '#4A5158',
+    'text-anchor': 'end', 'font-weight': '600' }, 'conversations affected'));
+  svg.appendChild(mk('text', { x: GUT - 12, y: ay0 + 26, 'font-size': '10.5', fill: '#9AA2AB',
+    'text-anchor': 'end' }, 'per day'));
+
+  var wrap = el('div', 'chartwrap'); wrap.appendChild(svg); card.appendChild(wrap);
+
+  var lg = el('div', 'legend');
+  function sw(style, label) {
+    var sp = el('span'); var i = el('i', 'sw');
+    for (var k in style) i.style[k] = style[k];
+    sp.appendChild(i); sp.appendChild(document.createTextNode(label)); lg.appendChild(sp);
+  }
+  sw({ backgroundImage: 'linear-gradient(135deg,#FFE066,#FFB800)' }, 'a real fault, running');
+  sw({ background: '#F4F6F8', border: '1px dashed #DCE1E7' }, 'examined and dismissed');
+  card.appendChild(lg);
+
+  var rs = all.filter(function (f) { return f.is_regression; });
+  var ended = rs.filter(function (f) { return /^Ended/i.test(f.status_plain || ''); }).length;
+  if (ended && rs.length) {
+    card.appendChild(el('div', 'cap', ended + ' of these ' + rs.length
+      + ' faults had already ended before anyone looked. A dashboard showing you the last seven '
+      + 'days finds ' + (rs.length - ended) + ' of ' + rs.length
+      + '. This system reports episodes with a start and an end, not current state.'));
+  }
+  app.appendChild(card);
+}
+
+/* ---- the queue --------------------------------------------------------------------------- */
+function renderQueue() {
+  var app = $('#app');
+  app.appendChild(el('h2', null, 'Your queue'));
+  var card = el('div', 'queue');
+  card.appendChild(el('div', 'rule',
+    'Ordered by conversations affected. Drag to reorder your own queue — the system does not '
+    + 'assign a priority score, because it would have no derivation behind it.'));
+  var items = regs().slice().sort(function (a, b) {
+    return ((b.impact || {}).conversations_affected || 0) - ((a.impact || {}).conversations_affected || 0);
+  });
+  if (!items.length) {
+    card.appendChild(el('div', 'rule', 'Nothing in this deployment needs a decision. What was '
+      + 'examined and dismissed is on the decision screen, with the reasons.'));
+    app.appendChild(card); return;
+  }
+  var list = el('div');
+  function paint() {
+    [].slice.call(list.children).forEach(function (n, i) {
+      n.querySelector('.rk').textContent = String(i + 1);
+    });
+  }
+  items.forEach(function (f) {
+    var q = el('div', 'qi'); q.draggable = true;
+    q.appendChild(el('div', 'gr', '☰'));
+    q.appendChild(el('div', 'rk', ''));
+    var bd = el('div', 'bd');
+    bd.appendChild(el('div', 't', f.title_plain || f.id));
+    var imp = f.impact || {};
+    bd.appendChild(el('div', 's', f.tenant + ' · ' + fmtInt(imp.conversations_affected)
+      + ' conversations · ' + fmtPct(imp.share_of_traffic, 1) + ' of traffic · '
+      + (f.status_plain || '')));
+    q.appendChild(bd);
+    var go = el('a', 'go', 'open →'); go.href = '/?f=' + f.id;
+    q.appendChild(go);
+    q.addEventListener('dragstart', function () { q.classList.add('drag'); window.__drag = q; });
+    q.addEventListener('dragend', function () { q.classList.remove('drag'); paint(); });
+    q.addEventListener('dragover', function (e) { e.preventDefault(); q.classList.add('over'); });
+    q.addEventListener('dragleave', function () { q.classList.remove('over'); });
+    q.addEventListener('drop', function (e) {
+      e.preventDefault(); q.classList.remove('over');
+      var src = window.__drag; if (!src || src === q) return;
+      var kids = [].slice.call(list.children);
+      list.insertBefore(src, kids.indexOf(src) < kids.indexOf(q) ? q.nextSibling : q);
+      paint();
+    });
+    list.appendChild(q);
+  });
+  card.appendChild(list); paint();
+  app.appendChild(card);
+  var cta = el('a', 'cta', 'Start deciding →'); cta.href = '/';
+  app.appendChild(cta);
+
+  var fr = el('div', 'frozen');
+  fr.appendChild(el('span', null, '🔒'));
+  fr.appendChild(el('span', null, 'Metric definitions, the judge version and the '
+    + 'good-conversation standard are frozen. This system proposes changes to the agent, never to '
+    + 'the yardstick. Every number on this page is read from loop-report.json; the screen reads a '
+    + 'static report and does not stream.'));
+  app.appendChild(fr);
+}
+
+function render() {
+  if (typeof stopBoot === 'function') stopBoot();
+  renderSysbar(); renderGreet();
+  var app = $('#app'); app.innerHTML = '';
+  renderBento(); renderChart(); renderQueue();
+  [].forEach.call(app.querySelectorAll('.tile,.chartcard,.queue,.cta,.frozen,h2'), function (n) {
+    n.classList.add('rv');
+  });
+  FX.observe(app);
+}
+
+fetch('/report', { cache: 'no-store' }).then(function (r) { return r.json(); })
+  .then(function (rep) {
+    if (rep && rep.error) throw new Error(rep.error + ' — ' + (rep.hint || rep.detail || ''));
+    R = rep; render();
+  })
+  .catch(function (e) {
+    $('#app').innerHTML = '<div class="loading"><b>No report to read.</b><br>' + String(e)
+      + '<br><br>python nexus-loop/run.py --kit kit</div>';
+  });
+</script>
+</body>
+</html>
