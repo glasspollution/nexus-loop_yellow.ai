@@ -263,6 +263,73 @@ details[open]>summary:before{transform:rotate(45deg)}
   white-space:pre-wrap}
 .tc .arg{color:var(--ink-4)}
 
+
+/* ---- the deck: one thing at a time -------------------------------------------------------
+ * The case itself - what broke, how big, who acts, and the three buttons - is never behind an
+ * interaction. The SUPPORTING layers are: five tiles, each showing a one-line summary so the
+ * description is readable without hovering (hover does not exist on touch and is invisible to a
+ * keyboard). Exactly one opens at a time, in place rather than as a modal, so a numeral popover
+ * inside it is not a modal inside a modal.
+ * ------------------------------------------------------------------------------------------- */
+/* auto-fit so five tiles or seven both distribute evenly, and scroll-margin so the fixed nav
+   never lands on top of the row when a tile is scrolled to */
+.deck{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px;
+  margin-top:18px;scroll-margin-top:100px}
+.panel{scroll-margin-top:100px}
+section{scroll-margin-top:100px}
+.dt{position:relative;text-align:left;border:none;cursor:pointer;border-radius:12px;
+  padding:15px 16px 14px;background:var(--surface);box-shadow:var(--sh-1),inset 0 0 0 1px var(--rule-2);
+  transition:.28s var(--ease);font:inherit;color:inherit;overflow:hidden}
+.dt:hover{transform:translateY(-3px);
+  box-shadow:0 10px 26px rgba(12,15,21,.08),inset 0 0 0 1px rgba(255,206,0,.5)}
+.dt:before{content:"";position:absolute;left:16px;top:0;width:0;height:3px;border-radius:0 0 3px 3px;
+  background:var(--grad-y);transition:width .3s var(--ease)}
+.dt:hover:before{width:30px}
+.dt[aria-selected="true"]{background:linear-gradient(170deg,#FFFDF4,#fff 62%);
+  box-shadow:0 10px 30px rgba(12,15,21,.10),inset 0 0 0 1px rgba(255,206,0,.75)}
+.dt[aria-selected="true"]:before{width:100%;left:0;border-radius:0}
+.dt .tl{font-size:13px;font-weight:650;letter-spacing:-.01em;display:flex;align-items:center;
+  gap:7px}
+.dt .tn{font:10.5px var(--mono);color:var(--ink-4);font-weight:700}
+.dt .ts{font-size:11.5px;color:var(--ink-3);margin-top:6px;line-height:1.45;min-height:32px}
+.dt .tb{margin-top:9px;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--ink-4)}
+.dt[aria-selected="true"] .tb{color:#7A5B00}
+.panel{margin-top:14px;animation:panelIn .38s var(--ease)}
+@keyframes panelIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.panel section{margin-top:0}
+.panel section + section{margin-top:16px}
+@media (max-width:1100px){ .dt .ts{min-height:0} }
+
+/* the case card is compressed so the decision fits in the first screen */
+section.case{padding:24px 28px}
+section.case h1{font-size:28px;margin-bottom:6px}
+section.case .heroes{gap:14px;margin:20px 0 4px}
+section.case .hero{padding:13px 15px 12px}
+section.case .hero .v{font-size:33px}
+section.case .track{margin:22px 0 6px}
+section.case .callout{margin:18px 0 0}
+/* Owner and the ask share a row; the buttons get the full width beneath them. Squeezing three
+   decision buttons into a third column crushed the ask to one word per line. */
+.gatebar{display:grid;grid-template-columns:190px 1fr;gap:24px;align-items:start;
+  margin-top:18px;padding-top:18px;border-top:1px solid var(--rule-2)}
+.gatebar .gatewrap{grid-column:1 / -1}
+.gatebar .acts{margin-top:6px}
+.gatebar .askline{font-size:14.5px;line-height:1.5;max-width:70ch}
+@media (max-width:1100px){ .gatebar{grid-template-columns:1fr;gap:14px} }
+
+/* tighter rhythm so the decision lands inside the first screen */
+section.case .rail{margin-bottom:14px;padding:9px 15px}
+section.case .scope{margin-bottom:18px}
+section.case .heroes{margin:16px 0 2px;gap:12px}
+section.case .hero{padding:12px 14px 11px}
+section.case .hero .v{font-size:31px}
+section.case .hero .l{margin-top:4px;font-size:12px}
+section.case .track{margin:18px 0 4px}
+section.case .step{padding-top:26px}
+section.case .callout{margin:14px 0 0;padding:13px 17px 13px 19px}
+section.case .callout p{margin-bottom:0}
+section.case .btn{padding:13px 24px}
 /* ---- actions ----------------------------------------------------------------------------- */
 .acts{display:flex;gap:13px;margin-top:26px;flex-wrap:wrap;align-items:center}
 .btn{border:none;border-radius:999px;padding:14px 28px;font-size:14.5px;font-weight:650;
@@ -742,13 +809,15 @@ function renderSysbar() {
 
 /* ---------- the finding ------------------------------------------------------------------- */
 function renderFinding(f) {
-  var s = el('section');
+  var s = el('section', 'case');
   var d = IDX.byFinding[f.id] || {};
   var p = IDX.byDiag[d.id] || null;
   var imp = f.impact || {};
   var approved = p && p.approval && p.approval.verdict;
 
   var railCls = approved ? 'done' : (/^Still running/i.test(f.status_plain || '') ? 'live' : 'ended');
+  if (railCls === 'done') s.classList.add('done');
+  else if (approved) s.classList.add('no');
   var rail = el('div', 'rail ' + railCls);
   if (approved) rail.appendChild(document.createTextNode('\u2713'));
   else rail.appendChild(el('i', 'rmark ' + railCls));
@@ -832,21 +901,22 @@ function renderFinding(f) {
 
   var AUD = { agent_builder: 'Agent Builder', business_owner: 'Business Owner',
               platform_owner: 'Platform Team' };
-  var row = el('div', 'askrow');
+  /* Owner, the ask, and the three buttons on one line at the foot of the case card. The
+   * decision was 3,161px down the page - three and a half screens - which is a long way to
+   * scroll to reach the only control that matters. */
+  var row = el('div', 'gatebar');
   var left = el('div');
   left.appendChild(el('div', 'k', 'Who has to act'));
   (f.audience || []).forEach(function (a) {
-    var ch = el('span', 'chip', AUD[a] || a);
-    ch.style.marginRight = '6px';
-    ch.style.marginBottom = '6px';
-    left.appendChild(ch);
+    left.appendChild(el('span', 'chip', AUD[a] || a));
   });
   row.appendChild(left);
-  var right = el('div');
-  right.appendChild(el('div', 'k', 'Decision asked of you'));
-  right.appendChild(el('p', null, p && p.decision ? p.decision.asking_approval_for
+  var mid = el('div');
+  mid.appendChild(el('div', 'k', 'Decision asked of you'));
+  mid.appendChild(el('div', 'askline', p && p.decision ? p.decision.asking_approval_for
     : 'No fix is proposed for this finding. It is reported for a human to route.'));
-  row.appendChild(right);
+  row.appendChild(mid);
+  row.appendChild(p ? renderGate(f, p) : el('div'));
   s.appendChild(row);
   return s;
 }
@@ -1289,7 +1359,6 @@ function renderPropose(f) {
     s.appendChild(box);
   });
 
-  s.appendChild(renderGate(f, p));
   return s;
 }
 
@@ -1324,7 +1393,7 @@ function renderAudit(hist) {
 }
 
 function renderGate(f, p) {
-  var wrap = el('div');
+  var wrap = el('div', 'gatewrap');
   var a = p.approval;
   if (a && a.verdict) {
     var ui = VERDICT_UI[a.verdict] || VERDICT_UI.deferred;
@@ -1711,6 +1780,131 @@ function renderSelf() {
 }
 
 /* ---------- bootstrap --------------------------------------------------------------------- */
+/* ---------- the deck -----------------------------------------------------------------------
+ * Five tiles, one panel open at a time. Each tile carries its own one-line summary so you can
+ * read what is inside it without opening it and without hovering. Evidence opens by default,
+ * because "can a stranger see the evidence" is the clause this screen is scored on and a layer
+ * nobody opens is a layer nobody saw.
+ * ------------------------------------------------------------------------------------------- */
+var openTile = 'evidence';
+
+function deckItems(f) {
+  var d = f ? (IDX.byFinding[f.id] || {}) : {};
+  var p = d.id ? IDX.byDiag[d.id] : null;
+  var vs = p ? (IDX.byPres[p.id] || []) : [];
+  var rows = f ? (f.evidence || []).map(parseEvidence).filter(function (x) { return x.series; }) : [];
+  var refusedN = (R.gaps || []).length;
+  var items = [];
+
+  if (f) {
+    items.push({ id: 'evidence', n: '01', label: 'What we measured',
+      sum: rows.length
+        ? rows.length + ' measurements, against a ' + ((f.baseline || {}).type === 'peer_traffic'
+            ? 'peer-traffic' : 'self-history') + ' baseline'
+        : 'the measurements behind this finding',
+      badge: (f.metric_plain || {}).plain || '',
+      build: function () { return renderMeasured(f); } });
+
+    items.push({ id: 'why', n: '02', label: 'Why it happened',
+      sum: d.attributed_change
+        ? 'a ' + d.attributed_change.kind + ' change on day ' + d.attributed_change.day
+          + ', and what we ruled out'
+        : 'no configuration change lines up with this window',
+      badge: d.attributed_change ? 'attributed, not proved' : 'not attributed',
+      build: function () { return renderWhy(f); } });
+
+    if (p) {
+      var stopFired = vs.some(function (v) { return v.stop_condition_triggered; });
+      items.push({ id: 'fix', n: '03', label: 'The fix, and the test',
+        sum: vs.length
+          ? (stopFired ? 'it worked and it broke known-good work' : 'replayed on recorded traffic')
+          : 'proposed, not yet verified against the replay',
+        badge: vs.length ? (stopFired ? 'stop condition fired' : vs[0].verdict.replace('_', ' '))
+                         : 'not verified',
+        build: function () { return renderPropose(f); } });
+    }
+  }
+
+  items.push({ id: 'thrown', n: String(items.length + 1).padStart(2, '0'),
+    label: 'What we threw away',
+    sum: IDX.dis.length + ' things that looked like problems and were not',
+    badge: 'dismissed in writing',
+    build: function () { return renderDismissals(); } });
+
+  items.push({ id: 'cannot', n: String(items.length + 1).padStart(2, '0'),
+    label: 'What we cannot see',
+    sum: refusedN + ' question' + (refusedN === 1 ? '' : 's') + ' we refused to answer',
+    badge: 'with the event that would fix it',
+    build: function () { return renderGaps(); } });
+
+  var sa = renderSelf();
+  if (sa) {
+    items.push({ id: 'self', n: String(items.length + 1).padStart(2, '0'),
+      label: 'How often we are right',
+      sum: 'our own record, and what we decline to compute from it',
+      badge: 'one cycle',
+      build: function () { return renderSelf(); } });
+  }
+  return items;
+}
+
+function renderDeck(f, app) {
+  var items = deckItems(f);
+  if (!items.length) return;
+  if (!items.some(function (x) { return x.id === openTile; })) openTile = items[0].id;
+
+  var deck = el('div', 'deck');
+  deck.setAttribute('role', 'tablist');
+  var panel = el('div', 'panel');
+  panel.setAttribute('role', 'tabpanel');
+  panel.id = 'deckpanel';
+
+  function show(id) {
+    openTile = id;
+    var it = items.filter(function (x) { return x.id === id; })[0];
+    panel.innerHTML = '';
+    var node = it ? it.build() : null;
+    if (node) panel.appendChild(node);
+    [].forEach.call(deck.children, function (b) {
+      b.setAttribute('aria-selected', String(b.dataset.id === id));
+      b.tabIndex = b.dataset.id === id ? 0 : -1;
+    });
+    [].forEach.call(panel.querySelectorAll('section'), function (n) {
+      n.classList.add('rv', 'in');
+    });
+    FX.observe(panel);
+  }
+
+  items.forEach(function (it, i) {
+    var b = el('button', 'dt');
+    b.type = 'button';
+    b.dataset.id = it.id;
+    b.setAttribute('role', 'tab');
+    b.setAttribute('aria-controls', 'deckpanel');
+    var tl = el('div', 'tl');
+    tl.appendChild(el('span', 'tn', it.n));
+    tl.appendChild(el('span', null, it.label));
+    b.appendChild(tl);
+    b.appendChild(el('div', 'ts', it.sum));
+    if (it.badge) b.appendChild(el('div', 'tb', it.badge));
+    b.onclick = function () { show(it.id); };
+    b.addEventListener('keydown', function (e) {
+      var k = e.key, j = null;
+      if (k === 'ArrowRight') j = (i + 1) % items.length;
+      if (k === 'ArrowLeft') j = (i - 1 + items.length) % items.length;
+      if (j === null) return;
+      e.preventDefault();
+      deck.children[j].focus();
+      show(items[j].id);
+    });
+    deck.appendChild(b);
+  });
+
+  app.appendChild(deck);
+  app.appendChild(panel);
+  show(openTile);
+}
+
 function render() {
   var app = $('#app');
   app.innerHTML = '';
@@ -1718,36 +1912,25 @@ function render() {
   renderSysbar();
   var f = IDX.regs[cur];
   if (!f) {
-    var s = el('section');
+    var s = el('section', 'case');
     s.appendChild(el('h1', null, 'Nothing in this deployment needs a decision.'));
     s.appendChild(el('p', 'dim', 'The scan found no regression. That is a result, not an empty '
-      + 'screen — what it examined and dismissed is below, with the reasons.'));
+      + 'screen \u2014 what it examined and dismissed is below, with the reasons.'));
     app.appendChild(s);
   } else {
     app.appendChild(renderFinding(f));
-    app.appendChild(renderMeasured(f));
-    var w = renderWhy(f);
-    if (w) app.appendChild(w);
-    var pr = renderPropose(f);
-    if (pr) app.appendChild(pr);
   }
-  app.appendChild(renderDismissals());
-  app.appendChild(renderGaps());
-  var sa = renderSelf();
-  if (sa) app.appendChild(sa);
+  renderDeck(f, app);
 
   var fr = el('div', 'frozen rv');
-  fr.appendChild(el('span', null, '🔒'));
+  fr.appendChild(el('span', null, '\ud83d\udd12'));
   fr.appendChild(el('span', null, 'Metric definitions, the judge version and the '
     + 'good-conversation standard are frozen. This system proposes changes to the agent, never to '
     + 'the yardstick. Every number on this page is read from loop-report.json; the screen reads a '
     + 'static report and does not stream.'));
   app.appendChild(fr);
-  /* the first card is already in view, so it reveals immediately rather than on scroll */
-  [].forEach.call(app.querySelectorAll('section'), function (n, i) {
-    n.classList.add('rv');
-    if (i === 0) n.classList.add('in');
-  });
+  var first = app.querySelector('section');
+  if (first) first.classList.add('rv', 'in');
   FX.observe(app);
 }
 
