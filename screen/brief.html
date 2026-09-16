@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loop Desk — the brief</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 rx=%273%27 fill=%27%2310131A%27/%3E%3Crect x=%274%27 y=%274%27 width=%278%27 height=%278%27 rx=%271.5%27 fill=%27%23FFCE00%27/%3E%3C/svg%3E">
+<style>
+:root{
+  --y:#FFCE00; --y-dk:#E0B400; --y-tint:#FFF8DB; --y-tint-2:#FFFDF2;
+  --ink:#10131A; --ink-2:#4A5158; --ink-3:#767E88; --ink-4:#9AA2AB;
+  --bg:#FAFAF7; --surface:#FFFFFF; --rule:#E6E8EC; --rule-2:#F1F3F6;
+  --good:#1F6B43; --warn:#8A5A09; --bad:#A8321F;
+  --sh-1:0 1px 2px rgba(16,19,26,.05);
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --sans:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.58 var(--sans);
+  -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+button{font-family:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 80px}
+
+.sysbar{background:var(--ink);color:#E9ECF1;font-size:12.5px}
+.sysbar .in{max-width:1180px;margin:0 auto;padding:9px 24px;display:flex;gap:18px;
+  align-items:center;flex-wrap:wrap}
+.sysbar .brand{display:flex;align-items:center;gap:8px;font-weight:700;color:#fff}
+.sysbar .dot{width:9px;height:9px;border-radius:2px;background:var(--y)}
+.sysbar .sp{flex:1}
+.sysbar code{font:11.5px var(--mono);color:#93A6C0}
+
+/* greeting band: near-black ON yellow - the one high-contrast brand move */
+.greet{background:var(--y);color:var(--ink)}
+.greet .in{max-width:1180px;margin:0 auto;padding:44px 24px 40px}
+.greet h1{font-size:38px;line-height:1.16;margin:0 0 10px;font-weight:650;letter-spacing:-.028em}
+.greet p{font-size:17px;margin:0 0 20px;max-width:62ch;color:#3A2E00}
+.greet .meta{font:11.5px var(--mono);color:#6B5400;display:flex;gap:16px;flex-wrap:wrap}
+
+h2{font-size:11.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);
+  margin:36px 0 14px;font-weight:700}
+
+/* bento */
+.bento{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.tile{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:20px 22px;
+  box-shadow:var(--sh-1)}
+.tile.wide{grid-column:span 2}
+.tile.tall{grid-row:span 2;grid-column:span 2}
+.tile .v{font-size:34px;line-height:1.08;font-weight:650;letter-spacing:-.03em}
+.tile .l{font-size:13px;color:var(--ink-2);margin-top:6px;line-height:1.42}
+.tile .c{font-size:11.5px;color:var(--ink-3);margin-top:10px;display:flex;gap:7px;
+  align-items:center;flex-wrap:wrap}
+.tile.accent{background:var(--ink);color:#fff;border-color:var(--ink)}
+.tile.accent .l{color:#B8C0CA}
+.tile.accent .c{color:#93A6C0}
+.tile.cover{border-left:3px solid var(--y);background:var(--y-tint-2)}
+.tile.tall .v{font-size:40px}
+.caselist{margin-top:18px;border-top:1px solid #2A303A;padding-top:14px}
+.caseitem{display:flex;gap:12px;align-items:flex-start;padding:11px 0;
+  border-bottom:1px solid #2A303A;cursor:pointer;text-decoration:none;color:inherit}
+.caseitem:last-child{border-bottom:none}
+.caseitem:hover .ct{color:var(--y)}
+.caseitem .cn{font:11.5px var(--mono);color:var(--y);padding-top:2px;min-width:22px}
+.caseitem .ct{font-size:13.5px;font-weight:600;line-height:1.4}
+.caseitem .cs{font-size:11.5px;color:#93A6C0;margin-top:2px}
+
+.n{background:none;border:none;padding:0;margin:0;font:inherit;color:inherit;cursor:pointer;
+  border-bottom:1px dotted var(--ink-4)}
+.n:hover{border-bottom-style:solid;border-bottom-color:var(--y);background:var(--y-tint-2)}
+.tile.accent .n{border-bottom-color:#5C6572}
+.tile.accent .n:hover{background:#252A32;border-bottom-color:var(--y)}
+.n:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--ink);
+  outline-offset:2px;border-radius:3px}
+
+/* chart */
+.chartcard{background:var(--surface);border:1px solid var(--rule);border-radius:12px;
+  padding:24px 26px;box-shadow:var(--sh-1)}
+.chartwrap{overflow-x:auto}
+.cap{font-size:13.5px;color:var(--ink-2);margin-top:14px;max-width:80ch;
+  border-left:3px solid var(--y);padding-left:13px}
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);margin-top:12px}
+.legend span{display:flex;gap:6px;align-items:center}
+.sw{width:11px;height:11px;border-radius:3px;display:inline-block}
+/* Provenance marks drawn in CSS, not typed as glyphs: the half-circle character does not exist
+   in every fallback font and rendered as a stray bracket. */
+.fid{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none;
+  border:1.5px solid var(--ink-3)}
+.fid.measured{background:var(--ink-3);border-color:var(--ink-3)}
+.fid.derived{background:linear-gradient(90deg,var(--ink-3) 50%,transparent 50%)}
+.fid.judged{background:radial-gradient(circle,var(--ink-3) 34%,transparent 35%)}
+.tile.accent .fid{border-color:#93A6C0}
+.tile.accent .fid.measured{background:#93A6C0;border-color:#93A6C0}
+
+/* queue */
+.queue{background:var(--surface);border:1px solid var(--rule);border-radius:12px;
+  padding:22px 24px;box-shadow:var(--sh-1)}
+.rule{font-size:13px;color:var(--ink-2);margin-bottom:14px}
+.qi{display:flex;gap:14px;align-items:center;padding:14px 14px;border:1px solid var(--rule);
+  border-radius:10px;margin-bottom:10px;background:var(--surface);cursor:grab}
+.qi:last-child{margin-bottom:0}
+.qi.drag{opacity:.4}
+.qi.over{border-color:var(--y);background:var(--y-tint-2)}
+.qi .gr{color:var(--ink-4);font-size:15px;line-height:1;letter-spacing:1px;user-select:none}
+.qi .rk{width:26px;height:26px;border-radius:7px;background:var(--y);color:var(--ink);
+  font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;
+  flex:none}
+.qi .bd{flex:1;min-width:0}
+.qi .t{font-size:14.5px;font-weight:600;line-height:1.38}
+.qi .s{font-size:12.5px;color:var(--ink-3);margin-top:3px}
+.qi .go{font-size:12.5px;font-weight:650;color:var(--ink);text-decoration:none;white-space:nowrap;
+  border-bottom:1.5px solid var(--y);padding-bottom:1px}
+
+.cta{display:inline-block;margin-top:26px;background:var(--ink);color:#fff;text-decoration:none;
+  padding:14px 28px;border-radius:8px;font-size:15px;font-weight:650}
+.cta:hover{background:#000}
+
+.pop{position:absolute;z-index:200;background:var(--surface);border:1px solid var(--rule);
+  border-top:3px solid var(--y);border-radius:12px;box-shadow:0 10px 34px rgba(16,19,26,.14);
+  padding:17px 19px;max-width:430px;font-size:13.5px}
+.pop .t{font-weight:700;margin-bottom:8px}
+.pop dt{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);
+  font-weight:700;margin-top:12px}
+.pop dd{margin:4px 0 0}
+.pop .lock{margin-top:14px;padding-top:11px;border-top:1px solid var(--rule-2);font-size:12.5px;
+  color:var(--ink-3)}
+.frozen{margin-top:26px;padding:16px 20px;border:1px dashed var(--rule);border-radius:12px;
+  font-size:13px;color:var(--ink-2);background:var(--y-tint-2);display:flex;gap:12px}
+.loading{padding:90px 20px;text-align:center;color:var(--ink-3)}
+@media (max-width:900px){
+  .bento{grid-template-columns:repeat(2,1fr)}
+  .tile.tall,.tile.wide{grid-column:span 2;grid-row:auto}
+  .greet h1{font-size:29px}
+}
+</style>
+</head>
+<body>
+<div class="sysbar"><div class="in" id="sysbar"></div></div>
+<div id="greet"></div>
+<div class="wrap" id="app"><div class="loading">Reading loop-report.json&hellip;</div></div>
+<div id="overlay"></div>
+<script>
+/* The Brief — a calm overview that hands off to the decision queue.
+ *
+ * Deliberately NOT a dashboard: no filters, no search, no sort controls, no drill-down. The
+ * system already did the analysis. Everything here is read from loop-report.json; there is not a
+ * day number, tenant, cohort or count written into this file.
+ */
+'use strict';
+var R = null;
+var $ = function (s) { return document.querySelector(s); };
+var el = function (t, c, x) { var e = document.createElement(t); if (c) e.className = c;
+  if (x != null) e.textContent = x; return e; };
+
+function fmtInt(n) { return n == null ? '--' : Number(n).toLocaleString('en-GB'); }
+function fmtPct(v, dp) { return v == null ? '--' : (v * 100).toFixed(dp == null ? 0 : dp) + '%'; }
+function fmtUsd(v) { return v == null ? '--' : '$' + (v >= 100 ? Math.round(v).toLocaleString('en-GB') : v.toFixed(2)); }
+
+/* ---- the numeral popover: identical contract to the decision screen --------------------- */
+function num(text, info) {
+  var b = el('button', 'n', text);
+  b.type = 'button';
+  b.addEventListener('click', function (e) { e.stopPropagation(); showPop(b, info); });
+  return b;
+}
+function closePop() { var p = document.querySelector('.pop'); if (p) p.remove(); }
+function showPop(anchor, info) {
+  closePop();
+  var p = el('div', 'pop');
+  p.appendChild(el('div', 't', info.title || 'This number'));
+  var dl = el('dl');
+  function row(k, v) { if (!v) return; dl.appendChild(el('dt', null, k)); dl.appendChild(el('dd', null, v)); }
+  var FID = { measured: 'Measured — counted directly in the logs. We know this happened.',
+              derived: 'Derived — calculated from things we counted. No opinion involved.',
+              judged: 'Judged — a model read the conversation and formed an opinion.' };
+  row('What it is', info.definition);
+  row('How we know it', FID[info.fidelity] || info.fidelity);
+  if (info.coverage != null) row('Coverage', fmtPct(info.coverage) + ' of this tenant’s conversations. ' + (info.coverageBasis || ''));
+  row('How it was computed', info.derivation);
+  p.appendChild(dl);
+  p.appendChild(el('div', 'lock', '🔒 Definition frozen — v1.0. This system proposes changes to the agent, never to the yardstick.'));
+  document.body.appendChild(p);
+  var r = anchor.getBoundingClientRect();
+  var top = r.bottom + window.scrollY + 8;
+  var left = Math.min(r.left + window.scrollX, window.scrollX + window.innerWidth - p.offsetWidth - 16);
+  if (top + p.offsetHeight > window.scrollY + window.innerHeight) top = Math.max(window.scrollY + 8, r.top + window.scrollY - p.offsetHeight - 8);
+  p.style.top = top + 'px'; p.style.left = Math.max(8, left) + 'px';
+  setTimeout(function () { document.addEventListener('click', closePop, { once: true }); }, 0);
+}
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closePop(); });
+</script>
+<script>
+/* ---- render ----------------------------------------------------------------------------- */
+function regs() { return (R.findings || []).filter(function (f) { return f.is_regression; }); }
+function dismissed() { return (R.findings || []).filter(function (f) { return !f.is_regression; }); }
+function sum(list, fn) { return list.reduce(function (a, f) { return a + (fn(f) || 0); }, 0); }
+
+function renderSysbar() {
+  var b = $('#sysbar'); b.innerHTML = '';
+  var brand = el('div', 'brand');
+  brand.appendChild(el('span', 'dot'));
+  brand.appendChild(el('span', null, 'LOOP DESK'));
+  b.appendChild(brand);
+  b.appendChild(el('span', null, 'the brief'));
+  b.appendChild(el('span', null, 'corpus ' + (R.corpus || '?')));
+  if (R.report_build) {
+    var c = el('code', null, 'build ' + String(R.report_build).replace('sha256:', '').slice(0, 10));
+    c.title = R.report_build; b.appendChild(c);
+  }
+  b.appendChild(el('span', 'sp'));
+  var a = el('a', 'home', 'open the queue →');
+  a.href = '/'; a.style.color = '#FFCE00'; a.style.textDecoration = 'none'; a.style.fontWeight = '600';
+  b.appendChild(a);
+}
+
+function renderGreet() {
+  var g = $('#greet'); g.innerHTML = '';
+  var band = el('div', 'greet'); var inn = el('div', 'in');
+  var n = regs().length;
+  var hr = new Date().getHours();
+  var part = hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening';
+  inn.appendChild(el('h1', null, part + ', Shekhar.'));
+  var sub = n === 0
+    ? 'Eight weeks of your agent’s logs, read overnight. Nothing needs your decision.'
+    : 'Eight weeks of your agent’s logs, read overnight. '
+      + (n === 1 ? 'One thing needs' : n + ' things need') + ' your decision.';
+  inn.appendChild(el('p', null, sub));
+  var meta = el('div', 'meta');
+  [(R.team || 'nexus-loop'), 'corpus ' + (R.corpus || '?'),
+   (R.report_build || ''), 'schema valid ✓'].forEach(function (x) {
+    if (x) meta.appendChild(el('span', null, x));
+  });
+  inn.appendChild(meta);
+  band.appendChild(inn); g.appendChild(band);
+}
+
+function renderBento() {
+  var app = $('#app');
+  app.appendChild(el('h2', null, 'While you were away'));
+  var rs = regs(), ds = dismissed();
+  var conv = sum(rs, function (f) { return (f.impact || {}).conversations_affected; });
+  var lost = sum(rs, function (f) { return ((f.impact || {}).downstream || {}).would_have_resolved_at_baseline; });
+  var hand = sum(rs, function (f) { return ((f.impact || {}).downstream || {}).unplanned_handoffs; });
+  var cost = sum(rs, function (f) { return (f.impact || {}).cost_usd; });
+  var b = el('div', 'bento');
+
+  /* the one large tile: what actually needs a person */
+  var big = el('div', 'tile tall accent');
+  var bv = el('div', 'v'); bv.appendChild(document.createTextNode(String((R.prescriptions || []).length)));
+  big.appendChild(bv);
+  big.appendChild(el('div', 'l', (R.prescriptions || []).length === 1
+    ? 'decision waiting for you' : 'decisions waiting for you'));
+  var cl = el('div', 'caselist');
+  rs.forEach(function (f, i) {
+    var a = el('a', 'caseitem'); a.href = '/?f=' + f.id;
+    a.appendChild(el('div', 'cn', String(i + 1).padStart(2, '0')));
+    var bd = el('div');
+    bd.appendChild(el('div', 'ct', f.title_plain || f.id));
+    bd.appendChild(el('div', 'cs', f.tenant + ' · ' + (f.status_plain || '')));
+    a.appendChild(bd);
+    cl.appendChild(a);
+  });
+  if (!rs.length) cl.appendChild(el('div', 'cs', 'Nothing in this deployment needs a decision.'));
+  big.appendChild(cl);
+  b.appendChild(big);
+
+  function tile(cls, value, label, caption, info, fid) {
+    var t = el('div', 'tile' + (cls ? ' ' + cls : ''));
+    var v = el('div', 'v');
+    if (info) v.appendChild(num(value, info)); else v.appendChild(document.createTextNode(value));
+    t.appendChild(v);
+    t.appendChild(el('div', 'l', label));
+    if (caption) {
+      var c = el('div', 'c');
+      if (fid) c.appendChild(el('i', 'fid ' + fid));
+      c.appendChild(document.createTextNode(caption));
+      t.appendChild(c);
+    }
+    b.appendChild(t);
+    return t;
+  }
+  tile('', fmtInt(conv), 'conversations affected', '⬤ Measured · covers 100%', {
+    title: 'Conversations affected', definition: 'Conversations inside the affected cohorts across every open case.',
+    fidelity: 'measured', coverage: 1, coverageBasis: 'Every session is counted.',
+    derivation: 'Sum of impact.conversations_affected over all open cases.' }, 'measured');
+  tile('', fmtInt(lost), 'didn’t resolve that should have', '◐ Derived', {
+    title: 'Conversations that should have resolved', definition: 'Conversations that would have resolved at each case’s baseline rate and did not.',
+    fidelity: 'derived', coverage: 1, coverageBasis: 'Resolution is recorded on every session.',
+    derivation: 'Sum of impact.downstream.would_have_resolved_at_baseline. Derived from two rates, so approximate.' }, 'derived');
+  tile('', fmtInt(hand), 'handed to a human nobody staffed', '⬤ Measured', {
+    title: 'Unplanned handoffs', definition: 'Conversations handed to a human where handoff_by_design is false.',
+    fidelity: 'measured', coverage: 1, coverageBasis: 'Recorded on every session.',
+    derivation: 'Sum of impact.downstream.unplanned_handoffs.' }, 'measured');
+  tile('', fmtUsd(cost), 'spent on these conversations', '⬤ Measured · coverage-limited', {
+    title: 'Spend', definition: 'Model spend across the affected cohorts. Computed on tool-eligible traffic only.',
+    fidelity: 'measured', coverage: null,
+    derivation: 'Sum of impact.cost_usd. See each case for its tenant coverage.' }, 'measured');
+  tile('', String(ds.length), 'lookalikes examined and dismissed',
+       'each one written off in writing');
+  tile('', String((R.gaps || []).length), 'questions we refused to answer',
+       'each names the event that would fix it');
+
+  /* coverage gets its own visual treatment - it is the number we say out loud */
+  var cov = R.coverage_measured || {};
+  var ct = el('div', 'tile wide cover');
+  var cv = el('div', 'v');
+  var keys = Object.keys(cov);
+  keys.forEach(function (t, i) {
+    if (i) cv.appendChild(document.createTextNode('  ·  '));
+    cv.appendChild(num(fmtPct(cov[t].tool_call), {
+      title: 'Tool-metric coverage — ' + t,
+      definition: 'The share of this tenant’s conversations served by an agent that emits tool_call steps at all.',
+      fidelity: 'measured', coverage: cov[t].tool_call,
+      coverageBasis: 'Measured from the corpus.',
+      derivation: 'Sessions whose agent emits tool_call steps, over all of this tenant’s sessions.' }));
+    var sm = el('span'); sm.style.fontSize = '13px'; sm.style.fontWeight = '500';
+    sm.style.color = 'var(--ink-2)'; sm.textContent = ' ' + t;
+    cv.appendChild(sm);
+  });
+  ct.appendChild(cv);
+  ct.appendChild(el('div', 'l', 'coverage on tool metrics'));
+  ct.appendChild(el('div', 'c', 'Stated per tenant, never blended — one figure would describe neither deployment.'));
+  b.appendChild(ct);
+  app.appendChild(b);
+}
+
+/* ---- the one chart in the product -------------------------------------------------------- */
+/* Lanes, not stacked bands. Three overlapping translucent windows compound into a dark patch that
+ * reads as "worse here", which is not what the data says - and their labels collide. One lane per
+ * episode says when each one ran, at a glance, with nothing overlapping and nothing implied. */
+function renderChart() {
+  var app = $('#app');
+  app.appendChild(el('h2', null, 'Eight weeks, and when things went wrong'));
+  var card = el('div', 'chartcard');
+
+  var all = (R.findings || []).slice().sort(function (a, b) {
+    return a.window.from_day - b.window.from_day; });
+  var days = 1;
+  all.forEach(function (f) { days = Math.max(days, f.window.to_day + 1); });
+
+  var W = 1080, GUT = 208, PADR = 18, LANE = 30, AX = 26, AREA = 62, TOP = 10;
+  var iw = W - GUT - PADR;
+  var H = TOP + all.length * LANE + AX + AREA + 24;
+  var x = function (d) { return GUT + (d / (days - 1)) * iw; };
+
+  var NS = 'http://www.w3.org/2000/svg';
+  var svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  svg.setAttribute('width', '100%');
+  svg.setAttribute('style', 'min-width:820px;display:block');
+  function mk(t, a, txt) {
+    var e = document.createElementNS(NS, t);
+    for (var k in a) e.setAttribute(k, a[k]);
+    if (txt != null) e.textContent = txt;
+    return e;
+  }
+
+  /* week gridlines behind everything */
+  for (var g = 0; g < days; g += 7) {
+    svg.appendChild(mk('line', { x1: x(g), y1: TOP, x2: x(g), y2: TOP + all.length * LANE,
+      stroke: '#EEF0F3' }));
+  }
+
+  all.forEach(function (f, i) {
+    var yy = TOP + i * LANE, cy = yy + LANE / 2;
+    var real = f.is_regression;
+    /* the lane track */
+    svg.appendChild(mk('line', { x1: GUT, y1: cy, x2: W - PADR, y2: cy, stroke: '#F1F3F6',
+      'stroke-width': '1' }));
+    var x0 = x(f.window.from_day), x1 = x(f.window.to_day);
+    var w = Math.max(3, x1 - x0);
+    if (real) {
+      svg.appendChild(mk('rect', { x: x0, y: cy - 8, width: w, height: 16, rx: 4,
+        fill: '#FFCE00' }));
+      svg.appendChild(mk('rect', { x: x0, y: cy - 8, width: w, height: 16, rx: 4,
+        fill: 'none', stroke: '#E0B400' }));
+    } else {
+      svg.appendChild(mk('rect', { x: x0, y: cy - 6, width: w, height: 12, rx: 3,
+        fill: '#F4F6F8', stroke: '#DCE1E7', 'stroke-dasharray': '3 3' }));
+    }
+    /* label in the gutter - no collisions, because each has its own row */
+    var lab = (f.cohort_label || f.id);
+    if (lab.length > 30) lab = lab.slice(0, 29) + '\u2026';
+    svg.appendChild(mk('text', { x: GUT - 12, y: cy + 4, 'font-size': '12.5',
+      fill: real ? '#10131A' : '#767E88', 'text-anchor': 'end',
+      'font-weight': real ? '600' : '400' }, lab));
+    /* the verdict, right of the gutter edge, so a dismissal never reads as a problem */
+    svg.appendChild(mk('text', { x: GUT - 12, y: cy + 17, 'font-size': '10.5',
+      fill: '#9AA2AB', 'text-anchor': 'end' },
+      real ? 'days ' + f.window.from_day + '\u2013' + f.window.to_day : 'examined, dismissed'));
+    /* how long it ran, at the end of the bar */
+    if (real) {
+      var d = (f.impact || {}).days_running;
+      if (d) {
+        /* a bar that runs to the end of the corpus leaves no room outside it, so the duration
+           moves inside rather than being clipped at the edge */
+        var outside = x1 + 52 < W - PADR;
+        svg.appendChild(mk('text', {
+          x: outside ? x1 + 8 : x1 - 8, y: cy + 4, 'font-size': '11.5',
+          fill: outside ? '#7A5B00' : '#4A3200',
+          'text-anchor': outside ? 'start' : 'end',
+          'font-weight': '600' }, d + ' days'));
+      }
+    }
+  });
+
+  /* day axis */
+  var ay = TOP + all.length * LANE + 16;
+  svg.appendChild(mk('line', { x1: GUT, y1: ay - 8, x2: W - PADR, y2: ay - 8, stroke: '#E6E8EC' }));
+  for (var dd = 0; dd < days; dd += 7) {
+    svg.appendChild(mk('text', { x: x(dd), y: ay + 6, 'font-size': '11', fill: '#767E88',
+      'text-anchor': 'middle' }, 'day ' + dd));
+  }
+
+  /* a small area strip beneath: conversations affected per day, from the report */
+  var series = new Array(days).fill(0);
+  all.filter(function (f) { return f.is_regression; }).forEach(function (f) {
+    var n = (f.impact || {}).conversations_affected || 0;
+    var span = f.window.to_day - f.window.from_day + 1;
+    for (var d2 = f.window.from_day; d2 <= f.window.to_day; d2++) series[d2] += n / span;
+  });
+  var mx = Math.max.apply(null, series) || 1;
+  var ay0 = ay + 20, ah = AREA - 24;
+  var yv = function (v) { return ay0 + ah - (v / mx) * ah; };
+  var path = 'M' + x(0) + ',' + yv(series[0]);
+  for (var i2 = 1; i2 < days; i2++) path += 'L' + x(i2) + ',' + yv(series[i2]);
+  svg.appendChild(mk('path', { d: path + 'L' + x(days - 1) + ',' + (ay0 + ah) + 'L' + x(0) + ','
+    + (ay0 + ah) + 'Z', fill: '#10131A', opacity: '.08' }));
+  svg.appendChild(mk('path', { d: path, fill: 'none', stroke: '#10131A', 'stroke-width': '1.8',
+    'stroke-linejoin': 'round' }));
+  svg.appendChild(mk('text', { x: GUT - 12, y: ay0 + 12, 'font-size': '11.5', fill: '#4A5158',
+    'text-anchor': 'end', 'font-weight': '600' }, 'conversations affected'));
+  svg.appendChild(mk('text', { x: GUT - 12, y: ay0 + 26, 'font-size': '10.5', fill: '#9AA2AB',
+    'text-anchor': 'end' }, 'per day'));
+
+  var wrap = el('div', 'chartwrap'); wrap.appendChild(svg); card.appendChild(wrap);
+
+  var lg = el('div', 'legend');
+  function sw(style, label) {
+    var sp = el('span'); var i = el('i', 'sw');
+    for (var k in style) i.style[k] = style[k];
+    sp.appendChild(i); sp.appendChild(document.createTextNode(label)); lg.appendChild(sp);
+  }
+  sw({ background: '#FFCE00', border: '1px solid #E0B400' }, 'a real fault, running');
+  sw({ background: '#F4F6F8', border: '1px dashed #DCE1E7' }, 'examined and dismissed');
+  card.appendChild(lg);
+
+  var rs = all.filter(function (f) { return f.is_regression; });
+  var ended = rs.filter(function (f) { return /^Ended/i.test(f.status_plain || ''); }).length;
+  if (ended && rs.length) {
+    card.appendChild(el('div', 'cap', ended + ' of these ' + rs.length
+      + ' faults had already ended before anyone looked. A dashboard showing you the last seven '
+      + 'days finds ' + (rs.length - ended) + ' of ' + rs.length
+      + '. This system reports episodes with a start and an end, not current state.'));
+  }
+  app.appendChild(card);
+}
+
+/* ---- the queue --------------------------------------------------------------------------- */
+function renderQueue() {
+  var app = $('#app');
+  app.appendChild(el('h2', null, 'Your queue'));
+  var card = el('div', 'queue');
+  card.appendChild(el('div', 'rule',
+    'Ordered by conversations affected. Drag to reorder your own queue — the system does not '
+    + 'assign a priority score, because it would have no derivation behind it.'));
+  var items = regs().slice().sort(function (a, b) {
+    return ((b.impact || {}).conversations_affected || 0) - ((a.impact || {}).conversations_affected || 0);
+  });
+  if (!items.length) {
+    card.appendChild(el('div', 'rule', 'Nothing in this deployment needs a decision. What was '
+      + 'examined and dismissed is on the decision screen, with the reasons.'));
+    app.appendChild(card); return;
+  }
+  var list = el('div');
+  function paint() {
+    [].slice.call(list.children).forEach(function (n, i) {
+      n.querySelector('.rk').textContent = String(i + 1);
+    });
+  }
+  items.forEach(function (f) {
+    var q = el('div', 'qi'); q.draggable = true;
+    q.appendChild(el('div', 'gr', '☰'));
+    q.appendChild(el('div', 'rk', ''));
+    var bd = el('div', 'bd');
+    bd.appendChild(el('div', 't', f.title_plain || f.id));
+    var imp = f.impact || {};
+    bd.appendChild(el('div', 's', f.tenant + ' · ' + fmtInt(imp.conversations_affected)
+      + ' conversations · ' + fmtPct(imp.share_of_traffic, 1) + ' of traffic · '
+      + (f.status_plain || '')));
+    q.appendChild(bd);
+    var go = el('a', 'go', 'open →'); go.href = '/?f=' + f.id;
+    q.appendChild(go);
+    q.addEventListener('dragstart', function () { q.classList.add('drag'); window.__drag = q; });
+    q.addEventListener('dragend', function () { q.classList.remove('drag'); paint(); });
+    q.addEventListener('dragover', function (e) { e.preventDefault(); q.classList.add('over'); });
+    q.addEventListener('dragleave', function () { q.classList.remove('over'); });
+    q.addEventListener('drop', function (e) {
+      e.preventDefault(); q.classList.remove('over');
+      var src = window.__drag; if (!src || src === q) return;
+      var kids = [].slice.call(list.children);
+      list.insertBefore(src, kids.indexOf(src) < kids.indexOf(q) ? q.nextSibling : q);
+      paint();
+    });
+    list.appendChild(q);
+  });
+  card.appendChild(list); paint();
+  app.appendChild(card);
+  var cta = el('a', 'cta', 'Start deciding →'); cta.href = '/';
+  app.appendChild(cta);
+
+  var fr = el('div', 'frozen');
+  fr.appendChild(el('span', null, '🔒'));
+  fr.appendChild(el('span', null, 'Metric definitions, the judge version and the '
+    + 'good-conversation standard are frozen. This system proposes changes to the agent, never to '
+    + 'the yardstick. Every number on this page is read from loop-report.json; the screen reads a '
+    + 'static report and does not stream.'));
+  app.appendChild(fr);
+}
+
+function render() {
+  renderSysbar(); renderGreet();
+  var app = $('#app'); app.innerHTML = '';
+  renderBento(); renderChart(); renderQueue();
+}
+
+fetch('/report', { cache: 'no-store' }).then(function (r) { return r.json(); })
+  .then(function (rep) {
+    if (rep && rep.error) throw new Error(rep.error + ' — ' + (rep.hint || rep.detail || ''));
+    R = rep; render();
+  })
+  .catch(function (e) {
+    $('#app').innerHTML = '<div class="loading"><b>No report to read.</b><br>' + String(e)
+      + '<br><br>python nexus-loop/run.py --kit kit</div>';
+  });
+</script>
+</body>
+</html>
