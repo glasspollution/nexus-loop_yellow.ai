@@ -65,7 +65,7 @@ def _read_jsonl(path):
         return [json.loads(l) for l in fh if l.strip()]
 
 
-CACHE_VERSION = 1
+CACHE_VERSION = 2
 FINGERPRINT_FILES = ("catalog.json", "asks.md", "corpus/sessions.jsonl.gz", "corpus/agent_steps.jsonl.gz",
                      "corpus/config_timeline.csv", "labels/rubric_scores.jsonl", "labels/outcome_labels.jsonl")
 
@@ -118,6 +118,7 @@ def load_counters(kit, cache_dir=None):
 
     # ---------------- pass 1: steps -> per-session aggregates ----------------
     step_cols, tool_rows = {}, {}
+    kind_steps = Counter()      # (agent_kind, step_type) -> steps: checks the catalog's coverage semantics against the data
     with gzip.open(os.path.join(kit, "corpus", "agent_steps.jsonl.gz"), "rt", encoding="utf-8") as fh:
         for line in fh:
             r = json.loads(line)
@@ -127,6 +128,7 @@ def load_counters(kit, cache_dir=None):
             i = sid_idx.get(r["session_id"])
             if i is None:
                 continue
+            kind_steps[(rows[i].get("agent_kind"), st)] += 1
             outcome = r.get("outcome")
             obs = [(st + ".fail", 0.0 if outcome == "ok" else 1.0)]
             if st in ("tool_call", "llm_call"):
@@ -354,11 +356,31 @@ def load_counters(kit, cache_dir=None):
 
     coverage = {t: round(float(elig[ten_arr == TI[t]].mean()), 4) for t in tenants}
 
+    # ---------------- per-session attributes for the decision layer (never read by detection) ----------------
+    sid_arr = np.array([s["session_id"] for s in rows])
+    cost_arr = np.array([float(s["cost_usd"]) if s.get("cost_usd") is not None else np.nan for s in rows])
+    kinds = sorted({s.get("agent_kind") for s in rows if s.get("agent_kind")})
+    kind_codes = np.array([kinds.index(s["agent_kind"]) if s.get("agent_kind") in kinds else -1 for s in rows],
+                          dtype=np.int16)
+    vcodes, vvocab = {}, {}
+    for fld in version_cands or []:
+        vals = sorted({s.get(fld) for s in rows if isinstance(s.get(fld), str)})
+        if not vals or len(vals) > MAX_SLICE_CARDINALITY:
+            continue
+        vi = {v: k for k, v in enumerate(vals)}
+        vvocab[fld] = vals
+        vcodes[fld] = np.array([vi.get(s.get(fld), -1) for s in rows], dtype=np.int32)
+    labels = {"outcome": {r["session_id"]: r.get("human_resolved") for r in outcome_labels},
+              "outcome_n": len(outcome_labels), "rubric_n": len(rubric)}
+
     out = {"kit": kit, "tenants": tenants, "days": D,
            "BIN": BIN, "CONT": CONT, "volume": volume, "first_day": first_day, "slice_n": slice_n,
            "metrics": metrics,
            "S": {"ten": ten_arr, "day": day_arr, "tenant_index": TI, "codes": codes, "vocab": vocab,
-                 "tool_mask": tool_mask, "M": M, "MI": MI, "TM": TM, "TMI": TMI, "elig": elig},
+                 "tool_mask": tool_mask, "M": M, "MI": MI, "TM": TM, "TMI": TMI, "elig": elig,
+                 "sid": sid_arr, "cost": cost_arr, "kind": kind_codes, "kinds": kinds,
+                 "version_codes": vcodes, "version_vocab": vvocab},
+           "kind_steps": {"%s|%s" % k: n for k, n in kind_steps.items()}, "labels": labels,
            "version_fields": sorted({f["field"] for f in flips}), "flips": flips,
            "global_flips": global_flips, "refused_dims": refused, "cardinality": card,
            "calibration": calibration, "coverage": coverage, "no_step_kinds": sorted(no_step_kinds),

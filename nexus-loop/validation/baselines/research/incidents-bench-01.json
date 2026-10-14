@@ -126,6 +126,19 @@
   },
   {
    "id": "i8",
+   "tenant": "*",
+   "cohort": {},
+   "from_day": 7,
+   "to_day": 8,
+   "is_regression": false,
+   "cause_class": "load",
+   "metrics": [
+    "volume"
+   ],
+   "kind": "volume_drop"
+  },
+  {
+   "id": "i9",
    "tenant": "northwind-retail",
    "cohort": {},
    "from_day": 9,
@@ -143,7 +156,7 @@
    "kind": "load"
   },
   {
-   "id": "i9",
+   "id": "i10",
    "tenant": "acme-bank",
    "cohort": {
     "intent": "branch_locator"
@@ -158,7 +171,7 @@
    "kind": "mix_shift"
   },
   {
-   "id": "i10",
+   "id": "i11",
    "tenant": "*",
    "cohort": {},
    "from_day": 28,

@@ -23,6 +23,7 @@ from .cohorts import _units, daily, fires, smask, wtest
 from .detect import CFG, phi_binary, phi_cont, rel_effect
 from .diagnose import BEHAVIOUR, FIX, OUTCOME, diagnose, layer
 from .loader import direction_of, is_bin
+from .measure import evidence_item
 
 STRAT_DIMS = ("intent", "agent_id", "channel", "segment")
 
@@ -174,12 +175,22 @@ def breadth(C, E, e, sidx, c):
 
 
 def volume_events(C):
+    """Volume spikes and drops, measured against the typical volume of the SAME weekday: traffic has a weekly cycle,
+    and a surge that starts on a low-traffic day must not be missed on its first day (which would leave the surge's
+    own first day looking like a deviation that outlives it)."""
     D, out = C["days"], []
     for ten in C["tenants"]:
         vol = C["volume"].get((ten, "__all__", "__all__"), {})
-        v = np.array([vol.get(d, 0) for d in range(D)], dtype=float)
+        raw = np.array([vol.get(d, 0) for d in range(D)], dtype=float)
+        if D >= 21:
+            wd = np.arange(D) % 7
+            typical = np.maximum(np.array([np.median(raw[wd == k]) for k in range(7)])[wd], 1.0)
+            v = raw / typical
+            floor = 0.02
+        else:
+            v, floor = raw, 1.0
         med = float(np.median(v))
-        spread = max(1.4826 * float(np.median(np.abs(v - med))), 1.0)
+        spread = max(1.4826 * float(np.median(np.abs(v - med))), floor)
         for kind, flag in (("spike", (v > med + 6 * spread) & (v > 1.5 * med)),
                            ("drop", (v < med - 6 * spread) & (v < 0.67 * med))):
             run, gap = [], 0
@@ -193,7 +204,7 @@ def volume_events(C):
                     continue
                 if run:
                     out.append({"tenant": ten, "kind": kind, "from": run[0], "to": run[-1],
-                                "ratio": float(v[run].mean() / med) if med else 0.0, "median": med})
+                                "ratio": float(v[run].mean() / med) if med else 0.0, "median": float(np.median(raw))})
                 run, gap = [], 0
     merged = []
     for e in out:
@@ -277,15 +288,15 @@ def coverage_events(C, c):
     return out
 
 
-def evidence_lines(eps, primary=None, limit=8):
-    out = []
-    for e in sorted(eps, key=lambda x: (x is not primary, -x["stat"]))[:limit]:
-        where = "tenant-wide" if e["dim"] == "__all__" else "%s=%s" % (e["dim"], e["value"])
-        base = "sibling cohorts, same window" if e["mode"] == "peer" else "its own prior days"
-        out.append("%s on %s, days %d-%d: %.4g -> %.4g (%+.0f%%, z=%.1f, baseline: %s)"
-                   % (e["metric"], where, e["from"], e["to"], e["base"], e["cur"], 100 * e["effect"],
-                      e["stat"], base))
-    return out
+def evidence_items(C, eps, primary=None, limit=8):
+    """The strongest episodes, each re-measured over its own supporting days against one stated baseline, so the
+    before, the after and the printed change always agree (the scanner's first-window / peak-window statistics are
+    for detection only and are never printed)."""
+    return [evidence_item(C, e) for e in sorted(eps, key=lambda x: (x is not primary, -x["stat"]))[:limit]]
+
+
+def evidence_lines(C, eps, primary=None, limit=8):
+    return [x["line"] for x in evidence_items(C, eps, primary, limit)]
 
 
 def _inc(tenant, dim, value, fr, to, is_reg, cause, metrics, evidence, kind, **kw):
@@ -396,21 +407,24 @@ def build(C, E, cfg=None, trace=None):
             mem += extra
             ids |= {x["_i"] for x in extra}
             outlives = [x for x in mem if outside_driver(x)]
-            outcome = [x for x in mem if x["metric"] in OUTCOME]
-            if not outlives and not outcome:
+            outcome = sorted({x["metric"] for x in mem if x["metric"] in OUTCOME})
+            # the test is on evidence: a deviation - outcome metrics included - that begins and ends with the surge is
+            # driven by it (a self-correcting reliability event); only one that outlives the surge is a regression
+            if not outlives:
                 used_vol.add(spike)
                 r = wtest(C, "s.resolved", smask(C, g["tenant"], "__all__", "__all__"), None,
                           (sp["from"], sp["to"]), (sp["from"] - c["BASE"], sp["from"] - 1), c)
                 moved = sorted({x["metric"] for x in mem})
-                txt = ("Traffic ran %.1fx its typical daily volume on days %d-%d, and %s moved with it across "
-                       "every cohort at once - there is no locus. Resolution went %s, and no outcome metric fired. "
-                       "Every co-moving deviation ended within 3 days of volume returning to normal, so nothing "
-                       "outlives its driver. This is a capacity / reliability event for the platform view, not a "
-                       "quality regression."
+                txt = ("Traffic ran %.1fx its typical volume for those weekdays on days %d-%d, and %s moved with it across "
+                       "every cohort at once - there is no locus. Resolution went %s; %s. Every co-moving deviation "
+                       "ended within 3 days of volume returning to normal, so nothing outlives its driver. This is a "
+                       "capacity / reliability event for the platform view, not a quality regression."
                        % (sp["ratio"], sp["from"], sp["to"], ", ".join(moved),
-                          ("%.4f -> %.4f" % (r["m0"], r["m1"])) if r else "unmeasurable"))
+                          ("%.4f -> %.4f" % (r["m0"], r["m1"])) if r else "unmeasurable",
+                          ("outcome metrics that moved only while traffic was high and recovered with it: %s"
+                           % ", ".join(outcome)) if outcome else "no outcome metric fired"))
                 glob.append(_inc(g["tenant"], "__all__", "__all__", min(x["from"] for x in mem),
-                                 max(x["to"] for x in mem), False, "load", moved, evidence_lines(mem), "load",
+                                 max(x["to"] for x in mem), False, "load", moved, evidence_lines(C,mem), "load",
                                  not_a_regression_because=txt, audience=["platform_owner"], confidence=0.9))
                 for x in mem:
                     fate[x["_i"]] = "global:load"
@@ -420,7 +434,7 @@ def build(C, E, cfg=None, trace=None):
         if flip is not None and flip["field"] in judged_requires and \
                 all(x["metric"].startswith("s.quality_score") for x in mem):
             glob.append(_inc(g["tenant"], "__all__", "__all__", flip["day"], D - 1, False, "judge_change",
-                             [x["metric"] for x in mem], evidence_lines(mem), "instrument_boundary",
+                             [x["metric"] for x in mem], evidence_lines(C,mem), "instrument_boundary",
                              not_a_regression_because="moves only on a judged metric at a global judge boundary",
                              confidence=0.9))
             for x in mem:
@@ -430,7 +444,7 @@ def build(C, E, cfg=None, trace=None):
         primary = max(mem, key=lambda x: x["stat"])
         dg = diagnose(C, mem, primary, c)
         glob.append(_inc(g["tenant"], "__all__", "__all__", min(x["from"] for x in mem), max(x["to"] for x in mem),
-                         True, dg["cause"], [x["metric"] for x in mem], evidence_lines(mem, primary), "platform",
+                         True, dg["cause"], [x["metric"] for x in mem], evidence_lines(C,mem, primary), "platform",
                          confidence=dg["confidence"], attributed_change=dg["attributed_change"],
                          audience=["platform_owner"], baseline_mode="self", primary=primary,
                          diagnosis_notes=dg["notes"] + ["no locus on any dimension: platform-wide"]))
@@ -564,7 +578,7 @@ def build(C, E, cfg=None, trace=None):
                 fate[e["_i"]] = "unlocalized aggregate"
             out.append(_inc(eps[0]["tenant"], "__all__", "__all__", min(e["from"] for e in eps),
                             max(e["to"] for e in eps), False, "unknown", [e["metric"] for e in eps],
-                            evidence_lines(eps), "unlocalized",
+                            evidence_lines(C,eps), "unlocalized",
                             not_a_regression_because=(
                                 "The tenant aggregate moved, but no cohort on any dimension carries the change and "
                                 "it is not platform-wide. An aggregate shift with no locus is most often composition "
@@ -582,9 +596,14 @@ def build(C, E, cfg=None, trace=None):
         for e in att_eps:
             fate[e["_i"]] = "explained; attached to incident primary=%s=%s" % (pk[1], pk[2])
         dg = diagnose(C, root_eps, primary, c)
-        out.append(_inc(primary["tenant"], primary["dim"], primary["value"], min(e["from"] for e in own),
-                        max(e["to"] for e in own), True, dg["cause"], [e["metric"] for e in eps],
-                        evidence_lines(eps, primary), "regression", confidence=dg["confidence"],
+        own_from, own_to = min(e["from"] for e in own), max(e["to"] for e in own)
+        # evidence shows only episodes that overlap this incident's own days: an episode attached through an
+        # equal-strength explanation from a later, different incident on an overlapping cohort is not evidence here
+        shown = [e for e in eps if not (e["to"] < own_from or e["from"] > own_to)]
+        items = evidence_items(C, shown, primary)
+        out.append(_inc(primary["tenant"], primary["dim"], primary["value"], own_from,
+                        own_to, True, dg["cause"], [e["metric"] for e in eps],
+                        [x["line"] for x in items], "regression", confidence=dg["confidence"], evidence_refs=items,
                         attributed_change=dg["attributed_change"], audience=dg["audience"],
                         baseline_mode=primary["mode"], primary=primary, diagnosis_notes=dg["notes"],
                         explains=sorted({"%s=%s" % (e["dim"], e["value"]) for e in eps if sk(e) != pk})))
@@ -602,7 +621,7 @@ def build(C, E, cfg=None, trace=None):
             tw.setdefault("episodes", []).extend(g["eps"])
             continue
         out.append(_inc(g["tenant"], "__all__", "__all__", g["from"], g["to"], False, "traffic_mix",
-                        [e["metric"] for e in g["eps"]], evidence_lines(g["eps"]) + [line], "composition",
+                        [e["metric"] for e in g["eps"]], evidence_lines(C,g["eps"]) + [line], "composition",
                         not_a_regression_because=(
                             "These metrics moved only because the mix of traffic changed: %s. Within every "
                             "established cohort the rates did not move materially." % line), confidence=0.85))

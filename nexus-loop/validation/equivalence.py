@@ -1,9 +1,16 @@
 #!/usr/bin/env python
-"""Prove the packaged code is the researched code: same incidents, same report, on every corpus available.
+"""Prove the packaged detection is the researched detection: same incidents, same scored report skeleton.
 
 Baselines (validation/baselines/research/) are the outputs of the frozen research scanner (incidents) and of
 the verified report fixes (reports, handoff 13.2). Each kit is re-run through nexus.pipeline and compared after
-a JSON round trip.
+a JSON round trip: incidents byte-for-byte, reports on everything score.py reads (findings' tenant, cohort, window
+and regression flag; diagnoses' cause and attributed change; metrics; gaps). The decision layer built afterwards is
+verified by validation/run_all.py.
+
+Accepted detection changes since the research freeze (each re-verified on every corpus before its baseline moved):
+  * 2026-09-16, same-weekday volume baseline for spikes and drops, and load judged only on "nothing outlives the
+    surge" (handoff section 11, rows 20-21). The only baseline effect: bench-01 gains the dismissal of its planted
+    holiday volume drop (benign event B1, days 7-8), which the weekday-blind detector had missed.
 
     python validation/equivalence.py [--research-root <dir holding work/ and bench/ from the research session>]
 """
@@ -43,6 +50,18 @@ def first_difference(a, b, path=""):
     return None
 
 
+def skeleton(rep):
+    """What score.py and the detection proof depend on. The decision layer (impact text, evidence wording,
+    prescriptions, standard, verifications) was redesigned after the research freeze and is checked by
+    validation/run_all.py instead."""
+    return {"team": rep.get("team"), "corpus": rep.get("corpus"), "metrics": rep.get("metrics"), "gaps": rep.get("gaps"),
+            "findings": [dict({k: f.get(k) for k in ("id", "tenant", "cohort", "window", "is_regression")},
+                              dismissal_explained=bool(f.get("not_a_regression_because")))
+                         for f in rep.get("findings", [])],
+            "diagnoses": [{k: d.get(k) for k in ("id", "finding_id", "cause_class", "attributed_change", "confidence")}
+                          for d in rep.get("diagnoses", [])]}
+
+
 def main():
     utf8_stdout()
     ap = argparse.ArgumentParser()
@@ -60,12 +79,15 @@ def main():
         res = analyse(kit, cache_dir=os.path.join(ROOT, ".cache"), team="nexus-generic-scan")
         row = []
         for label, new, base in (("incidents", incidents_json(res["incidents"]), "incidents-%s.json" % name),
-                                 ("report", res["report"], "report-%s.json" % name)):
+                                 ("report skeleton", res["report"], "report-%s.json" % name)):
             bp = os.path.join(BASELINES, base)
             if not os.path.exists(bp):
                 row.append("%s: no baseline" % label)
                 continue
-            diff = first_difference(roundtrip(new), load_json(bp))
+            new_v, base_v = roundtrip(new), load_json(bp)
+            if label.startswith("report"):
+                new_v, base_v = skeleton(new_v), skeleton(base_v)
+            diff = first_difference(new_v, base_v)
             failures += bool(diff)
             row.append("%s: %s" % (label, "IDENTICAL" if not diff else "DIFFERS at " + diff[:140]))
         print("%-6s %-12s %s" % ("FAIL" if any("DIFFERS" in r for r in row) else "OK", name, " | ".join(row)))

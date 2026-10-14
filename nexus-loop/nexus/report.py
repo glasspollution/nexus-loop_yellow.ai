@@ -1,21 +1,25 @@
-"""Generic scanner, stage 4: incidents -> loop-report.json (schema shape) and an evaluator file.
+"""Incidents -> loop-report.json (schema shape), with the decision layer attached.
 
 Honesty fields are derived, not hand-written per scenario:
   * coverage = share of sessions whose agent kind emits mechanism steps (read from catalog semantics);
   * calibration = agreement with the human labels, within one judge version;
   * gaps = catalog capabilities declared NOT_MEASURABLE / coverage-limited, matched to asks by keyword.
-The ask -> metric mapping for A01/A04/A06/A09 is a planner step (interpreting operator language) and is
-written by hand here; it is the one place this harness does not derive something from the data.
+The ask -> metric mapping for A01/A04/A06/A09 is a planner step (interpreting operator language) and is written by
+hand here; it is the one place this harness does not derive something from the data.
 
-Conformance fixes from handoff 13.2 are applied here: no placeholder approval, tool-derived metrics per
-tenant, A09 judged with no borrowed calibration plus a REQUIRES_NEW_JUDGE gap, refused breakdowns cited.
+Decision layer (product handoff 5-7): every regression carries a decision packet (impact.py), the deployment's
+standard and frozen golden set are mined (standard.py), and each regression gets a prescription framed as a decision
+(prescribe.py). A definitions registry gives every number its definition. The pipeline never writes `approval`.
 """
 import re
 
-import numpy as np
+from .definitions import build_definitions, catalog_contradictions
+from .impact import impact_block, packet
+from .measure import compare
+from .prescribe import prescribe
+from .standard import mine
 
-from .cohorts import smask
-from .diagnose import FIX
+REPORT_VERSION = "nexus-loop/product-1"
 
 
 def parse_asks(text):
@@ -29,72 +33,6 @@ def parse_asks(text):
             out.append((cur, line.lstrip("> ").strip()))
             cur = None
     return out
-
-
-def impact(C, inc):
-    ten = inc["tenant"]
-    if ten == "*":
-        return None
-    S = C["S"]
-    MI, day = S["MI"], S["day"]
-    mk = smask(C, ten, inc["dim"], inc["value"])
-    fr, to = inc["from"], inc["to"]
-    win = (day >= fr) & (day <= to)
-    coh = mk & win
-    n = int(coh.sum())
-    if n == 0:
-        return None
-
-    def tot(mask, m, k):
-        return float(S["M"][mask, MI[m], k].sum()) if m in MI else 0.0
-
-    peers = []
-    if inc.get("baseline_mode") == "peer":
-        base_mask = smask(C, ten, "__all__", "__all__") & ~mk & win
-        if inc["dim"] == "intent":
-            ms = C["catalog"].get("milestones", {}).get(ten, {})
-            chain = ms.get(inc["value"])
-            peers = [i for i, ch in ms.items() if chain is not None and ch == chain and i != inc["value"]]
-            if peers:
-                pm = np.zeros_like(mk)
-                for p in peers:
-                    pm |= smask(C, ten, "intent", p)
-                base_mask = pm & win
-        basis = ("sibling cohorts over the same days, because this cohort has no before-period"
-                 + (" (siblings sharing its milestone chain: %s)" % ", ".join(peers) if peers else ""))
-    else:
-        base_mask = mk & (day >= fr - 20) & (day < fr)
-        basis = "this cohort's own days before onset"
-    res = tot(coh, "s.resolved", 1) / max(1.0, tot(coh, "s.resolved", 0))
-    bres = tot(base_mask, "s.resolved", 1) / max(1.0, tot(base_mask, "s.resolved", 0))
-    lost = max(0, int(round((bres - res) * n)))
-    unpl, ab = int(tot(coh, "s.handoff_unplanned", 1)), int(tot(coh, "s.abandoned", 1))
-    cn, cs = tot(coh, "s.cost_usd", 0), tot(coh, "s.cost_usd", 1)
-    bn, bs = tot(base_mask, "s.cost_usd", 0), tot(base_mask, "s.cost_usd", 1)
-    cpc, bcpc = (cs / cn if cn else 0.0), (bs / bn if bn else 0.0)
-    excess = max(0.0, (cpc - bcpc) * cn)
-    tn = int((smask(C, ten, "__all__", "__all__") & win).sum()) or 1
-    days = to - fr + 1
-    deriv = ("%d sessions matched the cohort over %d days (%.1f%% of this tenant's traffic in the window). "
-             "Baseline: %s. Resolution %.4f against %.4f, so %d conversations that would have resolved did not; "
-             "%d ended in a handoff the agent was not built to make and %d were abandoned. Cost per session "
-             "$%.5f against $%.5f (eligible traffic only), an excess spend of $%.2f over the window."
-             % (n, days, 100.0 * n / tn, basis, res, bres, lost, unpl, ab, cpc, bcpc, excess))
-    if lost >= max(1, 0.01 * n):
-        inaction = ("At the observed rate this costs about %.0f unresolved conversations a day in this cohort, "
-                    "and %.0f%% of its conversations reach a human who was not meant to be involved."
-                    % (lost / days, 100.0 * unpl / n))
-    elif excess > 0.01:
-        inaction = ("Outcomes are holding, but this cohort is spending about $%.2f a day more than its baseline for "
-                    "the same results, and customers are taking longer to get them." % (excess / days))
-    else:
-        inaction = ("The mechanism is degraded but outcomes and spend have not moved yet: this is a leading "
-                    "indicator, and it will not stay invisible.")
-    return {"impact": {"conversations_affected": n, "share_of_traffic": round(n / tn, 4),
-                       "downstream": {"would_have_resolved_at_baseline": lost, "unplanned_handoffs": unpl,
-                                      "abandoned": ab},
-                       "cost_usd": round(cs, 2), "days_running": days, "derivation": deriv},
-            "if_nothing_changes": inaction}
 
 
 def metrics_block(C):
@@ -155,7 +93,7 @@ def metrics_block(C):
                              "filter": "result_field_count = 0 AND tenant = '%s'" % t,
                              "denominator": "outcome='ok' tool_call steps of eligible sessions",
                              "breakdowns": ["tool_name"]}})
-    # FIX 4: every refused breakdown is attached to every metric's plan, generically from the catalog budgets
+    # every refused breakdown is attached to every metric's plan, generically from the catalog budgets
     refused = refusals(C)
     for m in out:
         m["plan"]["refused_breakdowns"] = refused
@@ -210,59 +148,115 @@ def gaps_block(C):
     return out
 
 
-def report(C, incidents, team="nexus-generic-scan"):
+def build_product(C, incidents):
+    """Decision packets, standard + golden set, and prescriptions for every regression incident."""
+    regs = [i for i in incidents if i["is_regression"]]
+    packets = {}
+    for inc in regs:
+        others = [x for x in regs if x is not inc and x["tenant"] in (inc["tenant"], "*")]
+        packets[inc["id"]] = packet(C, inc, others)
+    entries, manifest, comparisons = mine(C, incidents)
+    prescriptions = {inc["id"]: prescribe(C, inc, packets[inc["id"]], comparisons.get(inc["id"])) for inc in regs}
+    return {"packets": packets, "standard": entries, "standard_manifest": manifest, "comparisons": comparisons,
+            "prescriptions": prescriptions, "golden_sets": manifest["golden_sets"],
+            "definitions": build_definitions(C), "contradictions": catalog_contradictions(C)}
+
+
+def _r(x, d=5):
+    return None if x is None else round(float(x), d)
+
+
+def _fallback_impact(inc):
+    return {"impact": {"conversations_affected": 0, "share_of_traffic": 0.0,
+                       "derivation": "no conversation of this slice falls inside days %d-%d" % (inc["from"], inc["to"])},
+            "if_nothing_changes": "No conversation in the window could be measured, so no cost of inaction is claimed."}
+
+
+def system_notes(C, product):
+    parts = [
+        "Generic scan: one changepoint test over every metric x cohort series, overdispersion-adjusted; breadth, "
+        "composition and explain-away tests; diagnosis by runtime layer.",
+        "Decision layer: every regression carries exposed / hit / signed lost-resolution counts with 95% ranges, excess "
+        "unplanned handoffs over a named baseline, extra time and spend, status at the end of the data, owner, severity "
+        "and a plain inaction sentence; every figure is defined in `definitions`.",
+        "Standard: weekly top-decile standards from measured exemplars over the reference period (flagged regression "
+        "windows excluded); golden set frozen and hashed per tenant before any verification.",
+        "Hand-authored: the ask-to-metric mapping and the cause-to-change-type policy.",
+        "Not built: the A09 abandonment-reason judge (no human reason labels exist to calibrate one). No change is "
+        "deployed by this system; approvals are recorded decisions, not rollouts.",
+        "Refused breakdowns: " + ("; ".join(refusals(C)) or "none") + ".",
+    ]
+    if product["contradictions"]:
+        parts.append("Catalog vs data: " + "; ".join(x["text"] for x in product["contradictions"]) + ".")
+    return " ".join(parts)
+
+
+def report(C, incidents, team="nexus-generic-scan", product=None):
+    product = product or build_product(C, incidents)
     findings, diagnoses, prescriptions = [], [], []
     for k, inc in enumerate(incidents, 1):
         fid, did = "f%d" % k, "d%d" % k
         ten = inc["tenant"] if inc["tenant"] != "*" else C["tenants"][0]
+        prim = inc.get("primary") or {}
         f = {"id": fid, "tenant": ten, "cohort": inc["cohort"],
-             "metric": inc["metrics"][0] if inc["metrics"] else "n/a",
+             "metric": prim.get("metric") or (inc["metrics"][0] if inc["metrics"] else "n/a"),
              "window": {"from_day": max(0, inc["from"] - 2) if inc["is_regression"] else inc["from"],
                         "to_day": inc["to"]},
              "is_regression": inc["is_regression"],
-             "evidence": (["applies to every tenant"] if inc["tenant"] == "*" else []) + inc["evidence"]}
+             "evidence": (["applies to every tenant"] if inc["tenant"] == "*" else []) + inc["evidence"],
+             "incident_id": inc["id"]}
+        if inc.get("evidence_refs"):
+            f["evidence_refs"] = inc["evidence_refs"]
         if inc["is_regression"]:
-            p = inc.get("primary") or {}
-            f["observed"], f["expected"] = p.get("cur"), p.get("base")
-            f["severity"] = "high" if abs(p.get("effect", 0)) >= 0.5 else "medium"
-            imp = impact(C, inc)
-            if imp:
-                f["impact"], f["if_nothing_changes"] = imp["impact"], imp["if_nothing_changes"]
-            f["audience"] = inc.get("audience", ["agent_builder"])
+            p = product["packets"].get(inc["id"])
+            lo, hi = (p["onset"], p["end"]) if p else (inc["from"], inc["to"])
+            if prim:
+                cmp = compare(C, prim["metric"], inc["tenant"], prim["dim"], prim["value"], lo, hi, prim.get("mode", "self"))
+                if cmp["current"] is not None:
+                    f["observed"] = _r(cmp["current"])
+                if cmp["baseline"] is not None:
+                    f["expected"] = _r(cmp["baseline"])
+                f["observed_basis"] = ("%s on %s over days %d-%d; expected = the value for %s on days %d-%d"
+                                       % (prim["metric"], "%s=%s" % (prim["dim"], prim["value"]), lo, hi,
+                                          cmp["baseline_kind"], cmp["baseline_days"][0], cmp["baseline_days"][1]))
+            if p:
+                f["severity"] = p["severity"]
+                f["impact"], f["if_nothing_changes"] = impact_block(p), p["if_nothing_changes"]
+                f["audience"], f["audience_why"] = p["audience"], p["audience_why"]
+            else:
+                fb = _fallback_impact(inc)
+                f["severity"], f["impact"], f["if_nothing_changes"] = "low", fb["impact"], fb["if_nothing_changes"]
+                f["audience"] = inc.get("audience", ["agent_builder"])
         else:
             f["severity"] = "low"
             f["not_a_regression_because"] = inc.get("not_a_regression_because", "")
         findings.append(f)
         att = inc.get("attributed_change")
-        diagnoses.append({"id": did, "finding_id": fid, "cause_class": inc["cause_class"],
-                          "confidence": inc.get("confidence", 0.5),
-                          "attributed_change": {"kind": att["kind"], "day": att["day"]} if att else None,
-                          "evidence": (inc.get("diagnosis_notes") or []) + inc["evidence"][:3]
-                          + (["attributed via %s: %s %s -> %s" % (att["source"], att.get("target"), att.get("from"),
-                                                                att.get("to"))] if att else [])})
-        ct = FIX.get(inc["cause_class"]) if inc["is_regression"] else None
-        p = inc.get("primary") or {}
-        if ct and p.get("base") is not None:
-            prescriptions.append({
-                "id": "p%d" % k, "diagnosis_id": did, "change_type": ct,
-                "target": inc["value"] if inc["dim"] != "__all__" else inc["tenant"],
-                "description": "Address %s on %s" % (inc["cause_class"], inc["cohort"] or inc["tenant"]),
-                "autonomy_rung": "L2",
-                "predicted_delta": {"metric": p.get("metric"), "from": p.get("cur"), "to": p.get("base")},
-                "decision": {"asking_approval_for": "%s on %s" % (ct, inc["cohort"] or inc["tenant"]),
-                             "risk_if_diagnosis_wrong": ("If the cause is not what the evidence points to, the "
-                                                         "change is inert and the metric does not move."),
-                             "would_not_ship_if": "the replay shows any regression on the golden set"}})
+        diag = {"id": did, "finding_id": fid, "cause_class": inc["cause_class"],
+                "confidence": inc.get("confidence", 0.5),
+                "attributed_change": {"kind": att["kind"], "day": att["day"]} if att else None,
+                "evidence": (inc.get("diagnosis_notes") or []) + inc["evidence"][:3]
+                + (["attributed via %s: %s %s -> %s" % (att["source"], att.get("target"), att.get("from"),
+                                                      att.get("to"))] if att else [])}
+        if att:
+            from .prescribe import config_note
+            diag["attribution_detail"] = {"kind": att["kind"], "day": att["day"], "target": att.get("target"),
+                                          "from": att.get("from"), "to": att.get("to"), "source": att.get("source"),
+                                          "note": config_note(C, att)}
+        diagnoses.append(diag)
+        rx = product["prescriptions"].get(inc["id"]) if inc["is_regression"] else None
+        if rx:
+            prescriptions.append(dict({"id": "p%d" % k, "diagnosis_id": did}, **rx))
             # no "approval" key: it is written only by the approval gate, with verdict, decided_by, reason, at
-    return {"team": team, "corpus": C["catalog"].get("corpus_variant", "?"),
-            "system_notes": ("Generic scan: one changepoint test over every metric x cohort series, overdispersion-"
-                             "adjusted; breadth, composition and explain-away tests; diagnosis by runtime layer. "
-                             "Not implemented: standard mining, replay verification, the A09 reason judge, human "
-                             "decisions. Ask-to-metric mapping is hand-authored. Refused breakdowns: "
-                             + ("; ".join(refusals(C)) or "none") + "."),
-            "metrics": metrics_block(C), "standard": [], "findings": findings, "diagnoses": diagnoses,
+    return {"team": team, "corpus": C["catalog"].get("corpus_variant", "?"), "report_version": REPORT_VERSION,
+            "system_notes": system_notes(C, product),
+            "metrics": metrics_block(C), "standard": product["standard"], "findings": findings, "diagnoses": diagnoses,
             "prescriptions": prescriptions, "verifications": [], "gaps": gaps_block(C),
-            "self_assessment": {"cycles": 0, "prescription_accuracy": {}}}
+            "self_assessment": {"cycles": 0, "prescription_accuracy": {}},
+            "standard_manifest": product["standard_manifest"], "definitions": product["definitions"],
+            "data_contradictions": product["contradictions"],
+            "asks": [{"ask_id": a, "text": t} for a, t in parse_asks(C["asks"])],
+            "tenants": C["tenants"], "days": C["days"]}
 
 
 def incidents_json(incidents):

@@ -5,10 +5,12 @@ import json, gzip, random, shutil, os, sys, math, datetime as dt, collections
 
 UTC = dt.timezone.utc
 EPOCH = dt.datetime(2026, 6, 1, tzinfo=UTC)
-SCR = 'C:/Users/shekh/AppData/Local/Temp/claude/C--Users-shekh-Downloads-nexus-loop-day1-nexus-loop-day1/98532291-2e62-44c9-8af7-2f97b1094a5a/scratchpad'
-BENCH = SCR + '/bench'
+HERE = os.path.dirname(os.path.abspath(__file__))
+WORKSPACE = os.path.abspath(os.path.join(HERE, "..", "..", "..", ".."))
+SCR = os.environ.get("NEXUS_BENCH_SCRATCH", os.path.join(WORKSPACE, "tmp", "benchmark-scratch"))
+BENCH = os.environ.get("NEXUS_BENCH_OUT", os.path.join(SCR, "bench"))
 SRC = {
-    'A': ('C:/Users/shekh/Downloads/nexus-loop-day1/nexus-loop-day1/kit', 'ground_truth/ground_truth.json', 'variant A'),
+    'A': (os.path.join(WORKSPACE, 'kit'), 'ground_truth/ground_truth.json', 'variant A'),
     'S2': (SCR + '/work/kit-s2', 'ground_truth_SEALED/ground_truth.json', 'kit-s2'),
 }
 PREFIX = ['session_id', 'tenant', 'step_seq', 'ts', 'day', 'step_type', 'agent_id', 'agent_kind', 'channel',

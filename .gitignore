@@ -1,5 +1,5 @@
-# Problem statement document (not needed to run)
-*.pdf
+# Original problem statement (not needed to run)
+/YellowAI_PS_TechQuest.pdf
 
 # Other generated kits (the practice kit/ and tools/ are included so the solution runs from a clone)
 kit-*/
@@ -8,7 +8,20 @@ kit-*/
 __pycache__/
 *.pyc
 .pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+*.log
+.DS_Store
+Thumbs.db
+/tmp/
 nexus-loop/.cache/
 nexus-loop/out/
+nexus-loop/state/
+nexus-loop/screen/node_modules/
 nexus-loop/validation/data/
 nexus-loop/validation/results/
+nexus-loop/validation/benchmark/_build/

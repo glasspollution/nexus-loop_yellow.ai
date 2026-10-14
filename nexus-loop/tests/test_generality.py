@@ -7,7 +7,9 @@ import pytest
 
 from conftest import PRACTICE_KIT, ROOT
 
-DETECTION = ("config.py", "loader.py", "detect.py", "multiscale.py", "cohorts.py", "incidents.py", "diagnose.py")
+DETECTION = ("config.py", "loader.py", "detect.py", "multiscale.py", "cohorts.py", "incidents.py", "diagnose.py",
+             "measure.py", "impact.py", "standard.py", "prescribe.py", "replay.py", "selfassess.py", "decisions.py",
+             "screen.py", "definitions.py", "report.py", "pipeline.py")
 KEYS = {"tenant", "intent", "agent_id", "tool", "tool_name", "channel", "segment"}
 
 
